@@ -349,7 +349,7 @@ oc get routes -A
 oc get pods -n openshift-ingress -o wide
 ----
 
-=== 追加リソース（Additional Resources）
+=== 追加リソース
 
 * **Ingress Controller:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/configuring-ingress-cluster-traffic[Configuring ingress cluster traffic, window=blank]
 * **Route アノテーション:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/configuring-ingress-cluster-traffic#nw-route-specific-annotations_route-configuration[Route-specific annotations, window=blank]
