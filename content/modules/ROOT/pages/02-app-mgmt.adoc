@@ -1,9 +1,9 @@
-= Application Management Basics
+= アプリケーション管理
 :page-toclevels: 1
 
-== はじめに（Getting Started）
+== はじめに
 
-=== モジュールの概要（Module Overview）
+=== モジュールの概要
 
 **所要時間:** 15〜20 分 +
 **形式:** ハンズオン +
@@ -13,7 +13,7 @@ include::partial$console-access.adoc[]
 
 このモジュールでは、アプリケーションのデプロイ、外部への公開、容量に応じたスケーリング、障害発生時の OpenShift の自己修復動作の確認、およびヘルスチェックの設定を行います。これは OpenShift 上でワークロードを管理するためのコアな運用ワークフローです。
 
-=== 学習目標（Learning Objectives）
+=== 学習目標
 
 このモジュールを完了すると、以下のことができるようになります：
 
@@ -24,9 +24,9 @@ include::partial$console-access.adoc[]
 * Liveness（生存）および Readiness（準備状態）プローブの設定
 * メンテナンス中の可用性を保護するための PodDisruptionBudget（PDB）の使用
 
-== デプロイと検査（Deploy & Inspect）
+== デプロイと検査
 
-=== アプリケーションのデプロイ（Deploy an Application）
+=== アプリケーションのデプロイ
 
 プロジェクトを作成し、Web サーバーをデプロイします：
 
@@ -37,7 +37,7 @@ oc new-project app-management
 
 次に、OpenShift コンソールを使用して WeatherNow アプリケーションをデプロイします。WeatherNow は、運用トラック全体でテストワークロードとして使用されるシンプルな httpd ベースのコンテナです。
 
-. コンソールの右上隅にある **+** (追加) ボタンをクリックし、**Container images**（コンテナイメージ）を選択します。**Select project**（プロジェクトの選択）の下で、**app-management** が選択されていることを確認します：
+. コンソールの右上隅にある **+** ボタンをクリックし、**Container images**（コンテナイメージ）を選択します。**Select project**（プロジェクトの選択）の下で、**app-management** が選択されていることを確認します：
 +
 image::app-mgmt-deploy-menu.png[Add menu showing Container images option, link=self, window=blank]
 . **Deploy Image**（イメージのデプロイ）フォームにて：
@@ -57,7 +57,7 @@ image::app-mgmt-deploy-image.png[Deploy Image form with weathernow image validat
 * **Service** - Pod にトラフィックをルーティングする内部ロードバランサーです
 
 image::diagrams/02_service.png[OpenShift Service Load Balancing, 500, align=center, link=self, window=blank]
-Topology（トポロジー）ビューに移動します。Pod が実行中で Service が作成されていることが確認できますが、**Routes**（ルート）の下には "No Routes found for this resource"（このリソースのルートが見つかりません）と表示され、アプリケーションはまだクラスター外部からアクセスできません。
+コンソールの **Workloads → Topology** で Topology（トポロジー）ビューに移動します。Pod が実行中で Service が作成されていることが確認できますが、**Routes**（ルート）の下には "No Routes found for this resource"（このリソースのルートが見つかりません）と表示され、アプリケーションはまだクラスター外部からアクセスできません。
 
 image::app-mgmt-deploy-no-route.png[Topology view showing weathernow with no route, link=self, window=blank]
 ここでターミナルに切り替え、CLI 経由で同じ情報を確認します：
@@ -69,7 +69,7 @@ oc get pods -n app-management
 
 Topology ビューで確認したのと同じ、`Running` ステータスの Pod が 1 つ表示されるはずです。
 
-=== アプリケーションの検査（Inspect Your Application）
+=== アプリケーションの検査
 
 次に進む前に、最も重要な 2 つの診断コマンドに慣れておきましょう。これらは任意のネームスペース内の任意の Pod に対して動作します。コンソールでもこれを確認できます。前の手順から Topology ビューが開いているはずです。ワークロードノードをクリックし、右側のサイドパネルにある **Resources**（リソース）タブをクリックします。Pod 名をクリックすると、**Details**（詳細）、**Events**（イベント）、および **Logs**（ログ）タブを備えた Pod の詳細ビューが開きます。コンソールのログビューアは、リアルタイムストリーミング、テキスト検索、およびダウンロードをサポートしています。
 
@@ -104,9 +104,9 @@ Service には `ClusterIP` があります。これはクラスター内部か�
 
 TIP: コンソールの **Networking > Services**（プロジェクト: `app-management`）でも確認できます。`weathernow` をクリックして、Service の詳細、エンドポイント、およびバックエンドの Pod を確認してください。
 
-== 公開とスケーリング（Expose & Scale）
+== 公開とスケーリング
 
-=== Route の作成（Create a Route）
+=== Route の作成
 
 image::diagrams/02_route.png[OpenShift Route - Service - Pods, 500, align=center, link=self, window=blank]
 Route は、OpenShift ルーター（HAProxy ベースの Ingress コントローラー）を介して外部 URL を Service に接続します。
@@ -133,7 +133,7 @@ Route の URL をクリックして、ブラウザで WeatherNow アプリを開
 image::app-mgmt-weathernow-app.png[WeatherNow application showing weather data, link=self, window=blank]
 これで、アプリケーションにクラスター外部からアクセスできるようになりました。
 
-=== アプリケーションのスケーリング（Scale the Application）
+=== アプリケーションのスケーリング
 
 本番環境において Pod が 1 つだけでは不十分です。3 つのレプリカにスケーリングします：
 
@@ -163,9 +163,9 @@ oc get endpointslice -l kubernetes.io/service-name=weathernow -n app-management
 
 各 Pod の IP がエンドポイントとしてリストされます。新しい Pod が起動すると自動的に追加され、Pod が停止すると削除されます。
 
-== 弾力性と自己修復（Resilience）
+== 弾力性と自己修復
 
-=== 自己修復（Self-Healing）
+=== 自己修復
 
 Pod が停止すると、OpenShift はそれを自動的に置換します。実際の動作を確認してみましょう。
 
@@ -196,7 +196,7 @@ TIP: **OCP Console** の **Workloads -> Pods**（プロジェクト: `app-manage
 
 **Deployment コントローラー**が、実際の状態（2 つの Pod）と期待される状態（3 つの Pod）が一致していないことを検出し、代替を作成しました。これは手動の介在なしに数秒で実行されます。
 
-=== アプリケーションプローブ（Application Probes）
+=== アプリケーションプローブ
 
 OpenShift は、アプリケーションが実際に正常であるかどうかをどのように判断するのでしょうか？ プローブがない場合、内部のアプリがフリーズしたり、リスナーがクラッシュしたり、すべてのリクエストにエラーを返していたりしても、Pod は `Running` と表示されてしまいます。プローブがこの問題を解決します。
 
@@ -205,7 +205,7 @@ OpenShift は、アプリケーションが実際に正常であるかどうか�
 
 **意図的に障害を発生させる**
 
-プローブが失敗したときに何が起こるか見てみましょう。**誤ったポート**（何もリッスンしていないポート 9999）を指す Readiness プローブを追加します：
+プローブが失敗したときに何が起こるか見てみましょう。** 誤ったポート **（何もリッスンしていないポート 9999）を指す Readiness プローブを追加します：
 
 [source,bash,role="execute"]
 ----
@@ -220,7 +220,7 @@ oc patch deployment weathernow -n app-management --type=json -p='[
 
 NOTE: パッチにより新しいロールアウトがトリガーされます。ターミナルに Pod のステータスがストリーミング表示される場合は、**Ctrl+C** を押してプロンプトに戻してください。
 
-ロールアウトを監視します。**これは失敗することが予期されています**。プローブが誤ったポートを指しているため、新しい Pod が準備完了（Ready）になることはありません：
+ロールアウトを監視します。** これは失敗することが予期されています。 ** プローブが誤ったポートを指しているため、新しい Pod が準備完了（Ready）になることはありません：
 
 [source,bash,role="execute"]
 ----
@@ -297,7 +297,7 @@ image::deployment-actions-menu.png[Deployment actions menu showing Edit Health C
 このフォームは、Liveness、Readiness、および Startup プローブの違いを視覚的に示しており、JSON パッチを記述することなく設定できます：
 
 image::edit-health-checks.png[Edit Health Checks form showing configured readiness and liveness probes, link=self, window=blank]
-=== 不正なデプロイのロールバック（Rollback a Bad Deployment）
+=== 不正なデプロイのロールバック
 
 誰かが不具合のあるイメージの更新をプッシュしてしまいました。どのように元に戻しますか？
 
@@ -355,13 +355,13 @@ NOTE: これには 1 分程度かかる場合があります。5 分以上実行
 
 Deployment は動作するバージョンに戻りました。本番環境において、`oc rollout undo` は不具合のあるリリースから復旧するための最も迅速な方法となることが多く、コードを修正して再デプロイするよりも高速です。
 
-== PodDisruptionBudget（PDB）
+== PodDisruptionBudget
 
 PodDisruptionBudget (PDB) は、OpenShift に対して _「メンテナンス中であっても、常に最低 N 個の Pod を実行し続けること」_ を指示します。アップグレードや修理のためにノードをドレイン（Evict/排他）するとき、Eviction API は Pod を削除する前に PDB をチェックします。Pod を削除することで最小数を下回る場合、安全になるまでドレインがブロックされます。
 
 誤って設定された PDB はクラスターアップグレード停止の最大の原因（#1 cause）であるため、これは重要です。アップグレードプロセスはノードを 1 つずつドレインしますが、不適切な PDB が 1 つでもあるとアップグレード全体が期限なくブロックされる可能性があります。
 
-=== PDB の作成（Create a PDB）
+=== PDB の作成
 
 weathernow のデプロイは 3 つのレプリカを実行しています。常に最低 2 つの Pod が利用可能な状態を維持するように要求する PDB を作成します：
 
@@ -397,7 +397,7 @@ weathernow   2               N/A               1                     5s
 
 `ALLOWED DISRUPTIONS: 1` は、現在 1 つの Pod を安全に排除できることを意味します（3 実行中 - 最小 2 = 1 予備）。
 
-=== PDB の動作確認（See the PDB in Action）
+=== PDB の動作確認
 
 Pod を削除し、PDB カウンターを監視します：
 
@@ -420,7 +420,7 @@ sleep 10 && oc get pdb weathernow -n app-management
 
 `1` に戻りました。代替 Pod が準備完了になり、バジェットに再び余裕ができました。
 
-=== 障害の再現: ノードドレインのブロック（Break It: Block a Node Drain）
+=== 障害の再現: ノードドレインのブロック
 
 本番環境で最もよくある PDB の問題（`minAvailable` をレプリカ数と等しく設定すること）をシミュレートします。これは _「すべての Pod が常に実行されていなければならない」_ ことを意味し、安全に聞こえますがメンテナンスが不可能になります。
 
@@ -454,7 +454,7 @@ Cannot evict pod as it would violate the pod's disruption budget.
 
 これがまさにクラスターアップグレードをブロックする原因です。OpenShift アップグレードコントローラーは各ノードをドレインしようとしますが、この PDB に阻まれ、永久に待機します。コマンドは最後に自動的にノードの Uncordon（スケジューリングの再開）を行うため、スケジューリングが復元されます。
 
-=== PDB の修正（Fix the PDB）
+=== PDB の修正
 
 `minAvailable` を 2 に戻します。これにより、メンテナンス中に一度に 1 つの Pod を排除できるようになります：
 
@@ -472,19 +472,19 @@ oc get pdb weathernow -n app-management
 
 **まとめ:** クラスターのアップグレードが停止した場合は、`oc get pdb -A` を実行し、`ALLOWED DISRUPTIONS: 0` を探します。`minAvailable` がレプリカ数と等しい場合は、それを下げるか `maxUnavailable: 1` に切り替えます。すべての排除をブロックする PDB はアプリを保護するのではなく、クラスター全体のメンテナンスをブロックしてしまいます。
 
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
-=== まとめ（Summary）
+=== まとめ
 
 OpenShift におけるアプリケーションライフサイクルのコアプロセスを完了しました：
 
-* **デプロイ（Deploy）** - `oc new-app` は 1 つのコマンドで Deployment と Service を作成します
-* **検査（Inspect）** - 診断のための `oc describe pod` および `oc logs`
-* **公開（Expose）** - `oc create route edge` は TLS 終端された外部アクセスを追加します
-* **スケーリング（Scale）** - `oc scale` でレプリカ数を調整し、Service が自動ロードバランシングを行います
-* **自己修復（Self-heal）** - Pod を削除すると、OpenShift は数秒でそれを置換します
-* **ヘルスチェック（Health checks）** - プローブにより、正常な Pod のみがトラフィックを受信するようにします
-* **ロールバック（Rollback）** - `oc rollout undo` は不具合のあるデプロイを即座に元に戻します
+* ** デプロイ ** - `oc new-app` は 1 つのコマンドで Deployment と Service を作成します
+* ** 検査 ** - 診断のための `oc describe pod` および `oc logs`
+* ** 公開 ** - `oc create route edge` は TLS 終端された外部アクセスを追加します
+* ** スケーリング ** - `oc scale` でレプリカ数を調整し、Service が自動ロードバランシングを行います
+* ** 自己修復 ** - Pod を削除すると、OpenShift は数秒でそれを置換します
+* ** ヘルスチェック ** - プローブにより、正常な Pod のみがトラフィックを受信するようにします
+* ** ロールバック ** - `oc rollout undo` は不具合のあるデプロイを即座に元に戻します
 * **PDB** - `minAvailable` はドレイン中の可用性を保護します。設定ミスのある PDB はアップグレードをブロックします
 
 **主要コマンド:**
@@ -500,7 +500,7 @@ oc rollout undo deployment/myapp               # ロールバック
 oc get pdb -A                                  # 障害バジェットの確認
 ----
 
-=== クリーンアップ（Cleanup）
+=== クリーンアップ
 
 [source,bash,role="execute"]
 ----
