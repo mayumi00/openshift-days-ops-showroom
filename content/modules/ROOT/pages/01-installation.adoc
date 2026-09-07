@@ -1,4 +1,4 @@
-= インストールと検証（Installation & Verification）
+= インストールと検証
 :page-toclevels: 1
 
 **所要時間:** 10 分 +
