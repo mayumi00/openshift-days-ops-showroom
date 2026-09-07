@@ -307,7 +307,7 @@ oc get pods -n openshift-ingress -o wide
 oc patch ingresscontroller default -n openshift-ingress-operator --type=merge -p '{"spec":{"replicas":5}}'
 ----
 
-コンソールの **Administration -> Cluster Settings -> ClusterOperators** で Ingress Controller の健全性を確認し、**ingress** をクリックします：
+Ingress コントローラーの健全性は、コンソールの **Administration → Cluster Settings → ClusterOperators** で **ingress** をクリックすることで確認できます。
 
 image::ingress-images/ingress-operator-conditions.png[Ingress operator conditions showing Available, Progressing, Degraded status, link=self, window=blank]
 == クリーンアップとまとめ
