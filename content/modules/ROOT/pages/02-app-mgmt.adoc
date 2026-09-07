@@ -1,211 +1,211 @@
 = Application Management Basics
 :page-toclevels: 1
 
-== Getting Started
+== はじめに（Getting Started）
 
-=== Module Overview
+=== モジュールの概要（Module Overview）
 
-**Duration:** 15-20 minutes +
-**Format:** Hands-on +
-**Audience:** Platform Engineers, Operations Teams
+**所要時間:** 15〜20 分 +
+**形式:** ハンズオン +
+**対象者:** プラットフォームエンジニア、運用チーム
 
 include::partial$console-access.adoc[]
 
-In this module, you'll deploy an application, expose it to the outside world, scale it for capacity, see how OpenShift self-heals when things fail, and configure health checks. This is the core ops workflow for managing workloads on OpenShift.
+このモジュールでは、アプリケーションのデプロイ、外部への公開、容量に応じたスケーリング、障害発生時の OpenShift の自己修復動作の確認、およびヘルスチェックの設定を行います。これは OpenShift 上でワークロードを管理するためのコアな運用ワークフローです。
 
-=== Learning Objectives
+=== 学習目標（Learning Objectives）
 
-By the end of this module, you will be able to:
+このモジュールを完了すると、以下のことができるようになります：
 
-* Deploy an application from a container image
-* Expose it via a Route with TLS
-* Scale horizontally and observe the behavior
-* Understand OpenShift self-healing (pod recreation)
-* Configure liveness and readiness probes
-* Use PodDisruptionBudgets to protect availability during maintenance
+* コンテナイメージからのアプリケーションのデプロイ
+* TLS を使用した Route 経由でのアプリケーションの公開
+* 水平スケーリングとその動作の観察
+* OpenShift の自己修復（Pod の再作成）の理解
+* Liveness（生存）および Readiness（準備状態）プローブの設定
+* メンテナンス中の可用性を保護するための PodDisruptionBudget（PDB）の使用
 
-== Deploy & Inspect
+== デプロイと検査（Deploy & Inspect）
 
-=== Deploy an Application
+=== アプリケーションのデプロイ（Deploy an Application）
 
-Create a project and deploy a web server:
+プロジェクトを作成し、Web サーバーをデプロイします：
 
 [source,bash,role="execute"]
 ----
 oc new-project app-management
 ----
 
-Now deploy the WeatherNow application using the OpenShift Console. WeatherNow is a simple httpd-based container used as a test workload throughout the ops track.
+次に、OpenShift コンソールを使用して WeatherNow アプリケーションをデプロイします。WeatherNow は、運用トラック全体でテストワークロードとして使用されるシンプルな httpd ベースのコンテナです。
 
-. In the top-right corner of the console, click the **+** (Add) button and select **Container images**. Under **Select project**, make sure **app-management** is selected:
+. コンソールの右上隅にある **+** (追加) ボタンをクリックし、**Container images**（コンテナイメージ）を選択します。**Select project**（プロジェクトの選択）の下で、**app-management** が選択されていることを確認します：
 +
 image::app-mgmt-deploy-menu.png[Add menu showing Container images option, link=self, window=blank]
-. In the **Deploy Image** form:
-* Select **Image name from external registry** and enter: `quay.io/openshift-workshop-applications/weathernow:latest`
-* Wait for the image to show **Validated**
-* Ensure **Select project** is set to `app-management`
-* Set the **Name** to `weathernow`
-* Scroll down and **uncheck** the **Create a route** checkbox. OpenShift can create a route for you automatically, but we want to do it ourselves so you understand how routing works.
+. **Deploy Image**（イメージのデプロイ）フォームにて：
+* **Image name from external registry**（外部レジストリからのイメージ名）を選択し、以下を入力します：`quay.io/openshift-workshop-applications/weathernow:latest`
+* イメージに **Validated**（検証済み）と表示されるまで待ちます
+* **Select project** が `app-management` に設定されていることを確認します
+* **Name**（名前）を `weathernow` に設定します
+* 下にスクロールして、**Create a route**（ルートの作成）チェックボックスのチェックを**外します**。OpenShift はルートを自動的に作成できますが、ルーティングの仕組みを理解するために手動で行います。
 +
 image::app-mgmt-uncheck-route.png[Create a route checkbox unchecked, link=self, window=blank]
-* Click **Create**
+* **Create**（作成）をクリックします
 +
 image::app-mgmt-deploy-image.png[Deploy Image form with weathernow image validated, link=self, window=blank]
-This creates two resources:
+これにより、2 つのリソースが作成されます：
 
-* **Deployment** - defines what container to run and how many replicas
-* **Service** - internal load balancer that routes traffic to the pods
+* **Deployment** - 実行するコンテナとレプリカ数を定義します
+* **Service** - Pod にトラフィックをルーティングする内部ロードバランサーです
 
 image::diagrams/02_service.png[OpenShift Service Load Balancing, 500, align=center, link=self, window=blank]
-You'll be taken to the Topology view. Notice the pod is running and the service is created, but under **Routes** it says "No Routes found for this resource" - the application isn't accessible from outside the cluster yet.
+Topology（トポロジー）ビューに移動します。Pod が実行中で Service が作成されていることが確認できますが、**Routes**（ルート）の下には "No Routes found for this resource"（このリソースのルートが見つかりません）と表示され、アプリケーションはまだクラスター外部からアクセスできません。
 
 image::app-mgmt-deploy-no-route.png[Topology view showing weathernow with no route, link=self, window=blank]
-Now switch to the terminal to see the same information via CLI:
+ここでターミナルに切り替え、CLI 経由で同じ情報を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n app-management
 ----
 
-You should see one pod in `Running` status - the same pod you just saw in the Topology view.
+Topology ビューで確認したのと同じ、`Running` ステータスの Pod が 1 つ表示されるはずです。
 
-=== Inspect Your Application
+=== アプリケーションの検査（Inspect Your Application）
 
-Before moving on, get familiar with the two most important diagnostic commands. These work on any pod in any namespace. You can also see this in the console - you should already have the Topology view open from the previous step. Click the workload node, then click the **Resources** tab in the side panel on the right. Click the pod name to open the pod detail view with **Details**, **Events**, and **Logs** tabs. The console log viewer supports real-time streaming, text search, and downloading.
+次に進む前に、最も重要な 2 つの診断コマンドに慣れておきましょう。これらは任意のネームスペース内の任意の Pod に対して動作します。コンソールでもこれを確認できます。前の手順から Topology ビューが開いているはずです。ワークロードノードをクリックし、右側のサイドパネルにある **Resources**（リソース）タブをクリックします。Pod 名をクリックすると、**Details**（詳細）、**Events**（イベント）、および **Logs**（ログ）タブを備えた Pod の詳細ビューが開きます。コンソールのログビューアは、リアルタイムストリーミング、テキスト検索、およびダウンロードをサポートしています。
 
 image::app-mgmt-topology-pod-panel.png[Topology side panel showing pod name under Resources tab, link=self, window=blank]
 image::app-mgmt-pod-details.png[Pod detail page showing Overview with Events and resource usage, link=self, window=blank]
-Get detailed information about a pod - events, node placement, container status:
+Pod の詳細情報（イベント、ノードの配置、コンテナのステータス）を取得します：
 
 [source,bash,role="execute"]
 ----
 oc describe pod $(oc get pods -n app-management -o jsonpath='{.items[0].metadata.name}') -n app-management | tail -15
 ----
 
-The **Events** section at the bottom shows exactly what happened: image pulled, container created, pod scheduled to a specific node.
+下部の **Events** セクションには、何が起こったかが正確に表示されます（イメージのプル、コンテナの作成、特定ノードへの Pod のスケジューリング）。
 
-Check the container's logs:
+コンテナのログを確認します：
 
 [source,bash,role="execute"]
 ----
 oc logs $(oc get pods -n app-management -o jsonpath='{.items[0].metadata.name}') -n app-management | head -5
 ----
 
-If the container were crashing, the logs would tell you why. Use `--previous` to see logs from the last crash.
+コンテナがクラッシュしている場合、ログにその理由が表示されます。直前のクラッシュによるログを確認するには `--previous` を使用します。
 
-Check the service:
+Service を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get svc -n app-management
 ----
 
-The service has a `ClusterIP` - this is only reachable from inside the cluster. To expose it externally, we need a Route.
+Service には `ClusterIP` があります。これはクラスター内部からのみアクセス可能です。外部に公開するには、Route（ルート）が必要です。
 
-TIP: You can also see this in the console at **Networking > Services** (project: `app-management`) - click `weathernow` to see the service details, endpoints, and backing pods.
+TIP: コンソールの **Networking > Services**（プロジェクト: `app-management`）でも確認できます。`weathernow` をクリックして、Service の詳細、エンドポイント、およびバックエンドの Pod を確認してください。
 
-== Expose & Scale
+== 公開とスケーリング（Expose & Scale）
 
-=== Create a Route
+=== Route の作成（Create a Route）
 
 image::diagrams/02_route.png[OpenShift Route - Service - Pods, 500, align=center, link=self, window=blank]
-A Route connects an external URL to your service through the OpenShift router (HAProxy-based ingress controller).
+Route は、OpenShift ルーター（HAProxy ベースの Ingress コントローラー）を介して外部 URL を Service に接続します。
 
 [source,bash,role="execute"]
 ----
 oc create route edge weathernow --service=weathernow
 ----
 
-The `edge` termination means TLS is handled by the router - traffic is encrypted between the user and the router, then plain HTTP to the pod.
+`edge` 終端は、TLS がルーターによって処理されることを意味します。ユーザーとルーター間のトラフィックは暗号化され、ルーターから Pod までは通常の HTTP になります。
 
-Check the route:
+Route を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get route weathernow -n app-management
 ----
 
-Now go back to **Workloads → Topology** (project: `app-management`) in the console. You'll see the route icon has appeared on the application:
+コンソールの **Workloads → Topology**（プロジェクト: `app-management`）に戻ります。アプリケーション上に Route のアイコンが表示されているのがわかります：
 
 image::app-mgmt-deploy-topology.png[Topology view showing weathernow application with route, link=self, window=blank]
-Click the route URL to open the WeatherNow app in your browser:
+Route の URL をクリックして、ブラウザで WeatherNow アプリを開きます：
 
 image::app-mgmt-weathernow-app.png[WeatherNow application showing weather data, link=self, window=blank]
-Your application is now accessible from outside the cluster.
+これで、アプリケーションにクラスター外部からアクセスできるようになりました。
 
-=== Scale the Application
+=== アプリケーションのスケーリング（Scale the Application）
 
-One pod isn't enough for production. Scale to 3 replicas:
+本番環境において Pod が 1 つだけでは不十分です。3 つのレプリカにスケーリングします：
 
 [source,bash,role="execute"]
 ----
 oc scale deployment weathernow --replicas=3
 ----
 
-Now switch to the **OCP Console** tab: **Workloads -> Pods** (project: `app-management`). Watch the new pods appear in real-time with status transitions (Pending → ContainerCreating → Running).
+**OCP Console** タブに切り替えます：**Workloads -> Pods**（プロジェクト: `app-management`）。新しい Pod が表示され、ステータスがリアルタイムで遷移する（Pending → ContainerCreating → Running）のを確認します。
 
-TIP: If you don't see the **Workloads** menu, switch to the **Administrator** perspective using the dropdown in the top left.
+TIP: **Workloads** メニューが表示されない場合は、左上のドロップダウンを使用して **Administrator** パースペクティブに切り替えてください。
 
 image::app-mgmt-scaling-pods.png[Pod list showing 3 weathernow pods after scaling, link=self, window=blank]
-You can also verify via CLI:
+CLI 経由でも確認できます：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n app-management
 ----
 
-You should see 3 pods, all `Running`. The service automatically load balances across all of them - no configuration needed. The service uses **label selectors** to find pods:
+3 つの Pod がすべて `Running` で表示されるはずです。Service は自動的にこれらすべてにトラフィックをロードバランシングします（設定は不要です）。Service は **label selectors**（ラベルセレクター）を使用して Pod を検出します：
 
 [source,bash,role="execute"]
 ----
 oc get endpointslice -l kubernetes.io/service-name=weathernow -n app-management
 ----
 
-Each pod's IP is listed as an endpoint. When a new pod starts, it's automatically added. When a pod dies, it's removed.
+各 Pod の IP がエンドポイントとしてリストされます。新しい Pod が起動すると自動的に追加され、Pod が停止すると削除されます。
 
-== Resilience
+== 弾力性と自己修復（Resilience）
 
-=== Self-Healing
+=== 自己修復（Self-Healing）
 
-When a pod dies, OpenShift automatically replaces it. Let's see this in action.
+Pod が停止すると、OpenShift はそれを自動的に置換します。実際の動作を確認してみましょう。
 
-First, delete a pod:
+まず、Pod を 1 つ削除します：
 
 [source,bash,role="execute"]
 ----
 oc delete pod $(oc get pods -n app-management -o jsonpath='{.items[0].metadata.name}') -n app-management --wait=false
 ----
 
-Now immediately check the pods to see the self-healing in action:
+すぐに Pod を確認して、自己修復の動作を観察します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n app-management
 ----
 
-You should see one pod `Terminating` and a new one in `ContainerCreating` or `Running`. Run it again after a few seconds:
+1 つの Pod が `Terminating` で、新しい Pod が `ContainerCreating` または `Running` になっているのが確認できるはずです。数秒後にもう一度実行します：
 
 [source,bash,role="execute"]
 ----
 sleep 5 && oc get pods -n app-management
 ----
 
-The total is back to 3 replicas - all `Running`. The replacement happened in seconds with no manual intervention.
+合計が 3 つのレプリカに戻り、すべて `Running` になります。置換は手動の介入なしで数秒で行われました。
 
-TIP: You can also watch this in the **OCP Console** at **Workloads -> Pods** (project: `app-management`). The console shows pod status transitions in real-time with color-coded indicators.
+TIP: **OCP Console** の **Workloads -> Pods**（プロジェクト: `app-management`）でもこれを確認できます。コンソールには、色分けされたインジケーターで Pod のステータス遷移がリアルタイムで表示されます。
 
-**The Deployment controller** detected that the actual state (2 pods) didn't match the desired state (3 pods) and created a replacement. This happens in seconds, with no manual intervention.
+**Deployment コントローラー**が、実際の状態（2 つの Pod）と期待される状態（3 つの Pod）が一致していないことを検出し、代替を作成しました。これは手動の介在なしに数秒で実行されます。
 
-=== Application Probes
+=== アプリケーションプローブ（Application Probes）
 
-How does OpenShift know if your application is actually healthy? Without probes, a pod shows `Running` even if the app inside has hung, crashed its listener, or is returning errors to every request. Probes fix that.
+OpenShift は、アプリケーションが実際に正常であるかどうかをどのように判断するのでしょうか？ プローブがない場合、内部のアプリがフリーズしたり、リスナーがクラッシュしたり、すべてのリクエストにエラーを返していたりしても、Pod は `Running` と表示されてしまいます。プローブがこの問題を解決します。
 
-* **Readiness probe** - "Can this pod handle traffic?" If it fails, the pod is removed from the service endpoints. No requests get sent to it.
-* **Liveness probe** - "Is this pod still alive?" If it fails, OpenShift restarts the container.
+* **Readiness プローブ** - 「この Pod はトラフィックを処理できるか？」失敗した場合、Pod は Service のエンドポイントから削除されます。リクエストは送信されなくなります。
+* **Liveness プローブ** - 「この Pod はまだ生きているか？」失敗した場合、OpenShift はコンテナを再起動します。
 
-**Break It On Purpose**
+**意図的に障害を発生させる**
 
-Let's see what happens when probes fail. Add a readiness probe pointing at the **wrong port** - port 9999, where nothing is listening:
+プローブが失敗したときに何が起こるか見てみましょう。**誤ったポート**（何もリッスンしていないポート 9999）を指す Readiness プローブを追加します：
 
 [source,bash,role="execute"]
 ----
@@ -218,42 +218,42 @@ oc patch deployment weathernow -n app-management --type=json -p='[
 ]'
 ----
 
-NOTE: The patch triggers a new rollout. If you see pod status streaming in the terminal, press **Ctrl+C** to get your prompt back.
+NOTE: パッチにより新しいロールアウトがトリガーされます。ターミナルに Pod のステータスがストリーミング表示される場合は、**Ctrl+C** を押してプロンプトに戻してください。
 
-Watch the rollout - **this is expected to fail**. The new pods will never become ready because the probe is pointing at the wrong port:
+ロールアウトを監視します。**これは失敗することが予期されています**。プローブが誤ったポートを指しているため、新しい Pod が準備完了（Ready）になることはありません：
 
 [source,bash,role="execute"]
 ----
 oc rollout status deployment/weathernow -n app-management --timeout=30s || true
 ----
 
-You should see `error: timed out waiting for the condition` after 30 seconds. That's the correct outcome - the rollout stalled because the readiness probe is failing. If it's still running, press **Ctrl+C** to exit and continue.
+30 秒後に `error: timed out waiting for the condition` と表示されるはずです。これが正しい結果です。Readiness プローブが失敗しているため、ロールアウトが停止しました。まだ実行中の場合は、**Ctrl+C** を押して終了し、続行してください。
 
-Check the pods:
+Pod を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n app-management
 ----
 
-You should see pods showing `0/1 Running` - the container is running, but the readiness probe is failing so OpenShift won't send traffic to them. In the **OCP Console**, go to **Workloads -> Pods** (project: `app-management`):
+Pod が `0/1 Running` と表示されているはずです。コンテナは実行中ですが、Readiness プローブが失敗しているため、OpenShift はトラフィックを送信しません。**OCP Console** で、**Workloads -> Pods**（プロジェクト: `app-management`）に移動します：
 
 image::broken-probe-pods.png[Pod list showing 0/1 Running pod with failed readiness probe, link=self, window=blank]
-Click the `0/1` pod, then the **Events** tab. You'll see repeated `Readiness probe failed: dial tcp ... connect: connection refused` messages:
+`0/1` の Pod をクリックし、**Events**（イベント）タブをクリックします。`Readiness probe failed: dial tcp ... connect: connection refused` というメッセージが繰り返し表示されているのが確認できます：
 
 image::broken-probe-events.png[Events tab showing readiness probe failure messages, link=self, window=blank]
-Check via CLI too:
+CLI でも確認します：
 
 [source,bash,role="execute"]
 ----
 oc describe pod -l deployment=weathernow -n app-management | grep -A2 "Readiness"
 ----
 
-The pod is alive but not ready. No traffic reaches it. This is exactly what happens in production when an app's health endpoint goes down - OpenShift protects users from broken pods automatically.
+Pod は起動していますが、準備ができていません。トラフィックは到達しません。これは本番環境でアプリのヘルスエンドポイントがダウンしたときに起こることと同じです。OpenShift は問題のある Pod からユーザーを自動的に保護します。
 
-**Fix the Probe**
+**プローブの修正**
 
-Now fix it - point the readiness probe at port 8080 where httpd is actually listening, and add a liveness probe too:
+ここで修正します。Readiness プローブを httpd が実際にリッスンしているポート 8080 に向け、Liveness プローブも追加します：
 
 [source,bash,role="execute"]
 ----
@@ -271,76 +271,76 @@ oc patch deployment weathernow -n app-management --type=json -p='[
 ]'
 ----
 
-NOTE: The patch triggers a new rollout. If you see pod status streaming in the terminal, press **Ctrl+C** to get your prompt back.
+NOTE: パッチにより新しいロールアウトがトリガーされます。ターミナルに Pod のステータスがストリーミング表示される場合は、**Ctrl+C** を押してプロンプトに戻してください。
 
-NOTE: Probes support multiple types: `httpGet` (checks an HTTP endpoint), `tcpSocket` (checks if a port is listening), and `exec` (runs a command inside the container). Use whichever matches your app - `httpGet` to a `/healthz` endpoint is most common for web services.
+NOTE: プローブは複数のタイプをサポートしています：`httpGet`（HTTP エンドポイントをチェック）、`tcpSocket`（ポートがリッスンしているかチェック）、および `exec`（コンテナ内でコマンドを実行）。アプリに適合するものを選択してください。Web サービスでは `/healthz` エンドポイントに対する `httpGet` が最も一般的です。
 
-Wait for the rollout to complete:
+ロールアウトが完了するのを待ちます：
 
 [source,bash,role="execute"]
 ----
 oc rollout status deployment/weathernow -n app-management --timeout=60s
 ----
 
-NOTE: Once you see `deployment "weathernow" successfully rolled out` or `Completed`, press **Ctrl+C** to exit and continue.
+NOTE: `deployment "weathernow" successfully rolled out` または `Completed` と表示されたら、**Ctrl+C** を押して終了し、続行してください。
 
 [source,bash,role="execute"]
 ----
 oc get pods -n app-management
 ----
 
-All pods now show `1/1 Running` - probes pass, traffic flows. You just diagnosed and fixed a readiness probe failure, which is one of the most common issues in production OpenShift clusters.
+すべての Pod が `1/1 Running` と表示され、プローブが通過してトラフィックが流れるようになります。これで、本番の OpenShift クラスターで最も一般的な問題の 1 つである Readiness プローブの失敗を診断し、修正することができました。
 
-TIP: In the **OCP Console**, navigate to **Workloads -> Deployments**, click the three-dot menu on the `weathernow` deployment, and select **Edit Health Checks**:
+TIP: **OCP Console** で **Workloads -> Deployments** に移動し、`weathernow` Deployment の 3 点リーダーメニューをクリックして、**Edit Health Checks**（ヘルスチェックの編集）を選択します：
 
 image::deployment-actions-menu.png[Deployment actions menu showing Edit Health Checks option, link=self, window=blank]
-The form visually shows the difference between liveness, readiness, and startup probes - and lets you configure them without writing JSON patches:
+このフォームは、Liveness、Readiness、および Startup プローブの違いを視覚的に示しており、JSON パッチを記述することなく設定できます：
 
 image::edit-health-checks.png[Edit Health Checks form showing configured readiness and liveness probes, link=self, window=blank]
-=== Rollback a Bad Deployment
+=== 不正なデプロイのロールバック（Rollback a Bad Deployment）
 
-Someone just pushed a bad image update. How do you undo it?
+誰かが不具合のあるイメージの更新をプッシュしてしまいました。どのように元に戻しますか？
 
-Simulate a bad deploy by changing the image:
+イメージを変更して、不具合のあるデプロイをシミュレートします：
 
 [source,bash,role="execute"]
 ----
 oc set image deployment/weathernow weathernow=registry.access.redhat.com/ubi9/nginx-124 -n app-management
 ----
 
-NOTE: If you see pod status streaming in the terminal, press **Ctrl+C** to get your prompt back.
+NOTE: ターミナルに Pod のステータスがストリーミング表示される場合は、**Ctrl+C** を押してプロンプトに戻してください。
 
-Check the rollout history - OpenShift tracks every change:
+ロールアウトの履歴を確認します。OpenShift はすべての変更を記録しています：
 
 [source,bash,role="execute"]
 ----
 oc rollout history deployment/weathernow -n app-management
 ----
 
-You'll see multiple revisions. Each time you change the deployment, a new revision is created.
+複数のリビジョンが表示されます。Deployment を変更するたびに、新しいリビジョンが作成されます。
 
-You can also see this visually in the console. Navigate to **Workloads -> Deployments -> weathernow** and click the **ReplicaSets** tab:
+コンソールでもこれを視覚的に確認できます。**Workloads -> Deployments -> weathernow** に移動し、**ReplicaSets** タブをクリックします：
 
 image::app-mgmt-replicasets-history.png[ReplicaSets tab showing deployment revision history with active and scaled-down replicas, link=self, window=blank]
-Each ReplicaSet represents a revision. The active one shows `1 of 1 pods` while previous revisions are scaled to `0 of 0 pods` - OpenShift keeps them so it can roll back instantly.
+各 ReplicaSet はリビジョンを表します。アクティブなものは `1 of 1 pods` と表示され、以前のリビジョンは `0 of 0 pods` にスケーリングされます。OpenShift は即座にロールバックできるようにこれらを保持しています。
 
-Roll back to the previous working version:
+以前の正常に動作していたバージョンにロールバックします：
 
 [source,bash,role="execute"]
 ----
 oc rollout undo deployment/weathernow -n app-management
 ----
 
-NOTE: If you see pod status streaming in the terminal, press **Ctrl+C** to get your prompt back.
+NOTE: ターミナルに Pod のステータスがストリーミング表示される場合は、**Ctrl+C** を押してプロンプトに戻してください。
 
-Verify the original image is restored:
+元のイメージが復元されたことを確認します：
 
 [source,bash,role="execute"]
 ----
 oc get deployment weathernow -n app-management -o jsonpath='{.spec.template.spec.containers[0].image}'
 ----
 
-You should see the original WeatherNow image (shown as a digest since OpenShift resolves image tags via the ImageStream):
+元の WeatherNow イメージが表示されるはずです（OpenShift は ImageStream を介してイメージタグを解決するため、ダイジェストとして表示されます）：
 
 ----
 quay.io/openshift-workshop-applications/weathernow@sha256:362b6db3...
@@ -351,19 +351,19 @@ quay.io/openshift-workshop-applications/weathernow@sha256:362b6db3...
 oc rollout status deployment/weathernow -n app-management --timeout=60s
 ----
 
-NOTE: This may take a minute to complete. Only press **Ctrl+C** if it has been running for more than 5 minutes.
+NOTE: これには 1 分程度かかる場合があります。5 分以上実行されている場合のみ **Ctrl+C** を押してください。
 
-The deployment is back to the working version. In production, `oc rollout undo` is often the fastest way to recover from a bad release - faster than fixing the code and redeploying.
+Deployment は動作するバージョンに戻りました。本番環境において、`oc rollout undo` は不具合のあるリリースから復旧するための最も迅速な方法となることが多く、コードを修正して再デプロイするよりも高速です。
 
-== Pod Disruption Budgets
+== PodDisruptionBudget（PDB）
 
-A PodDisruptionBudget (PDB) tells OpenShift: _"always keep at least N pods running, even during maintenance."_ When you drain a node for an upgrade or repair, the eviction API checks PDBs before removing pods. If evicting a pod would drop below the minimum, the drain blocks until it's safe.
+PodDisruptionBudget (PDB) は、OpenShift に対して _「メンテナンス中であっても、常に最低 N 個の Pod を実行し続けること」_ を指示します。アップグレードや修理のためにノードをドレイン（Evict/排他）するとき、Eviction API は Pod を削除する前に PDB をチェックします。Pod を削除することで最小数を下回る場合、安全になるまでドレインがブロックされます。
 
-This matters to you because a misconfigured PDB is the #1 cause of stalled cluster upgrades - the upgrade process drains nodes one at a time, and a single bad PDB can block the entire upgrade indefinitely.
+誤って設定された PDB はクラスターアップグレード停止の最大の原因（#1 cause）であるため、これは重要です。アップグレードプロセスはノードを 1 つずつドレインしますが、不適切な PDB が 1 つでもあるとアップグレード全体が期限なくブロックされる可能性があります。
 
-=== Create a PDB
+=== PDB の作成（Create a PDB）
 
-Your weathernow deployment is running 3 replicas. Create a PDB that requires at least 2 pods to stay available at all times:
+weathernow のデプロイは 3 つのレプリカを実行しています。常に最低 2 つの Pod が利用可能な状態を維持するように要求する PDB を作成します：
 
 [source,bash,role="execute"]
 ----
@@ -381,25 +381,25 @@ spec:
 EOF
 ----
 
-Check the PDB:
+PDB を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pdb weathernow -n app-management
 ----
 
-You should see:
+次のように表示されるはずです：
 
 ----
 NAME         MIN AVAILABLE   MAX UNAVAILABLE   ALLOWED DISRUPTIONS   AGE
 weathernow   2               N/A               1                     5s
 ----
 
-`ALLOWED DISRUPTIONS: 1` means one pod can be safely evicted right now (3 running - 2 minimum = 1 spare).
+`ALLOWED DISRUPTIONS: 1` は、現在 1 つの Pod を安全に排除できることを意味します（3 実行中 - 最小 2 = 1 予備）。
 
-=== See the PDB in Action
+=== PDB の動作確認（See the PDB in Action）
 
-Delete a pod and watch the PDB counter:
+Pod を削除し、PDB カウンターを監視します：
 
 [source,bash,role="execute"]
 ----
@@ -411,18 +411,18 @@ oc delete pod $(oc get pods -n app-management -l app=weathernow -o jsonpath='{.i
 oc get pdb weathernow -n app-management
 ----
 
-`ALLOWED DISRUPTIONS` briefly drops to `0` while the replacement starts. Wait a few seconds and check again:
+代替 Pod が起動する間、`ALLOWED DISRUPTIONS` は一時的に `0` に下がります。数秒待ってから再度確認します：
 
 [source,bash,role="execute"]
 ----
 sleep 10 && oc get pdb weathernow -n app-management
 ----
 
-Back to `1` - the replacement pod is ready and the budget has room again.
+`1` に戻りました。代替 Pod が準備完了になり、バジェットに再び余裕ができました。
 
-=== Break It: Block a Node Drain
+=== 障害の再現: ノードドレインのブロック（Break It: Block a Node Drain）
 
-Now simulate the most common PDB problem in production - setting `minAvailable` equal to the replica count. This means _every single pod must be running at all times_, which sounds safe but makes maintenance impossible.
+本番環境で最もよくある PDB の問題（`minAvailable` をレプリカ数と等しく設定すること）をシミュレートします。これは _「すべての Pod が常に実行されていなければならない」_ ことを意味し、安全に聞こえますがメンテナンスが不可能になります。
 
 [source,bash,role="execute"]
 ----
@@ -434,7 +434,7 @@ oc patch pdb weathernow -n app-management --type=merge -p '{"spec":{"minAvailabl
 oc get pdb weathernow -n app-management
 ----
 
-`ALLOWED DISRUPTIONS: 0` - no pod can be evicted. Now try to drain the node, simulating what happens during a cluster upgrade:
+`ALLOWED DISRUPTIONS: 0` - どの Pod も排除できません。クラスターアップグレード中に発生することをシミュレートして、ノードのドレインを試みます：
 
 [source,bash,role="execute"]
 ----
@@ -446,17 +446,17 @@ echo "Uncordoning node..."
 oc adm uncordon $NODE
 ----
 
-The drain fails:
+ドレインは失敗します：
 
 ----
 Cannot evict pod as it would violate the pod's disruption budget.
 ----
 
-This is exactly what blocks cluster upgrades. The OpenShift upgrade controller tries to drain each node, hits this PDB, and waits forever. The command automatically uncordons the node at the end so scheduling is restored.
+これがまさにクラスターアップグレードをブロックする原因です。OpenShift アップグレードコントローラーは各ノードをドレインしようとしますが、この PDB に阻まれ、永久に待機します。コマンドは最後に自動的にノードの Uncordon（スケジューリングの再開）を行うため、スケジューリングが復元されます。
 
-=== Fix the PDB
+=== PDB の修正（Fix the PDB）
 
-Set `minAvailable` back to 2 - this allows one pod at a time to be evicted during maintenance:
+`minAvailable` を 2 に戻します。これにより、メンテナンス中に一度に 1 つの Pod を排除できるようになります：
 
 [source,bash,role="execute"]
 ----
@@ -468,39 +468,39 @@ oc patch pdb weathernow -n app-management --type=merge -p '{"spec":{"minAvailabl
 oc get pdb weathernow -n app-management
 ----
 
-`ALLOWED DISRUPTIONS: 1` - node drains will work again.
+`ALLOWED DISRUPTIONS: 1` - ノードのドレインが再び機能するようになります。
 
-**Takeaway:** When a cluster upgrade stalls, run `oc get pdb -A` and look for `ALLOWED DISRUPTIONS: 0`. If `minAvailable` equals the replica count, lower it or switch to `maxUnavailable: 1`. A PDB that blocks all evictions doesn't protect your app - it blocks your entire cluster from being maintained.
+**まとめ:** クラスターのアップグレードが停止した場合は、`oc get pdb -A` を実行し、`ALLOWED DISRUPTIONS: 0` を探します。`minAvailable` がレプリカ数と等しい場合は、それを下げるか `maxUnavailable: 1` に切り替えます。すべての排除をブロックする PDB はアプリを保護するのではなく、クラスター全体のメンテナンスをブロックしてしまいます。
 
-== Cleanup & Summary
+== クリーンアップとまとめ（Cleanup & Summary）
 
-=== Summary
+=== まとめ（Summary）
 
-You completed the core application lifecycle on OpenShift:
+OpenShift におけるアプリケーションライフサイクルのコアプロセスを完了しました：
 
-* **Deploy** - `oc new-app` creates deployment + service in one command
-* **Inspect** - `oc describe pod` and `oc logs` for diagnostics
-* **Expose** - `oc create route edge` adds TLS-terminated external access
-* **Scale** - `oc scale` adjusts replicas, service auto-balances
-* **Self-heal** - delete a pod, OpenShift replaces it in seconds
-* **Health checks** - probes ensure only healthy pods receive traffic
-* **Rollback** - `oc rollout undo` reverts a bad deployment instantly
-* **PDB** - `minAvailable` protects availability during drains; misconfigured PDBs block upgrades
+* **デプロイ（Deploy）** - `oc new-app` は 1 つのコマンドで Deployment と Service を作成します
+* **検査（Inspect）** - 診断のための `oc describe pod` および `oc logs`
+* **公開（Expose）** - `oc create route edge` は TLS 終端された外部アクセスを追加します
+* **スケーリング（Scale）** - `oc scale` でレプリカ数を調整し、Service が自動ロードバランシングを行います
+* **自己修復（Self-heal）** - Pod を削除すると、OpenShift は数秒でそれを置換します
+* **ヘルスチェック（Health checks）** - プローブにより、正常な Pod のみがトラフィックを受信するようにします
+* **ロールバック（Rollback）** - `oc rollout undo` は不具合のあるデプロイを即座に元に戻します
+* **PDB** - `minAvailable` はドレイン中の可用性を保護します。設定ミスのある PDB はアップグレードをブロックします
 
-**Key commands:**
+**主要コマンド:**
 
 [source,bash]
 ----
-oc new-app --name=myapp --image=myimage       # Deploy
-oc describe pod <pod-name>                     # Inspect
-oc logs <pod-name>                             # Check logs
-oc create route edge myapp --service=myapp     # Expose with TLS
-oc scale deployment myapp --replicas=N         # Scale
-oc rollout undo deployment/myapp               # Rollback
-oc get pdb -A                                  # Check disruption budgets
+oc new-app --name=myapp --image=myimage       # デプロイ
+oc describe pod <pod-name>                     # 検査
+oc logs <pod-name>                             # ログの確認
+oc create route edge myapp --service=myapp     # TLSによる公開
+oc scale deployment myapp --replicas=N         # スケーリング
+oc rollout undo deployment/myapp               # ロールバック
+oc get pdb -A                                  # 障害バジェットの確認
 ----
 
-=== Cleanup
+=== クリーンアップ（Cleanup）
 
 [source,bash,role="execute"]
 ----
@@ -508,4 +508,4 @@ oc delete namespace app-management --ignore-not-found
 echo "Cleanup complete"
 ----
 
-NOTE: This waits for the namespace to be fully deleted before returning. This ensures the next module can recreate it cleanly.
+NOTE: これにより、返る前にネームスペースが完全に削除されるまで待機します。これにより、次のモジュールでクリーンに再作成できるようになります。
