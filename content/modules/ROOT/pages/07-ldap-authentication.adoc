@@ -1,73 +1,73 @@
-= Identity & Users
+= アイデンティティとユーザー（Identity & Users）
 :page-toclevels: 1
 
-**Duration:** 15-20 minutes +
-**Format:** Hands-on identity provider configuration
+**所要時間:** 15〜20 分 +
+**形式:** ハンズオンでのアイデンティティプロバイダー設定
 
 include::partial$console-access.adoc[]
 
-== The Scenario
+== シナリオ（The Scenario）
 
-Your cluster is running with an HTPasswd admin account - fine for initial setup, but production needs real identity management. In this module you'll integrate an LDAP directory, sync groups into OpenShift, configure RBAC so different teams get different access, and test it by logging in as actual users.
+お使いのクラスターは HTPasswd 管理者アカウントで動作しています。初期セットアップには問題ありませんが、本番環境には本物のアイデンティティ管理が必要です。このモジュールでは、LDAP ディレクトリを統合し、グループを OpenShift に同期し、異なるチームが異なるアクセス権を取得できるように RBAC を構成し、実際にユーザーとしてログインしてテストします。
 
-OpenShift's OAuth server supports multiple identity providers - LDAP, OpenID Connect, HTPasswd, GitHub, GitLab, Google, and more. We're using LDAP here because it's the most common enterprise setup and demonstrates group synchronization. The OIDC module covers the modern alternative.
+OpenShift の OAuth サーバーは、LDAP、OpenID Connect、HTPasswd、GitHub、GitLab、Google など、複数のアイデンティティプロバイダーをサポートしています。ここでは、最も一般的なエンタープライズセットアップであり、グループ同期の実証に適しているため LDAP を使用します。OIDC モジュールでは、よりモダンな代替手段をカバーしています。
 
-TIP: For the full list of supported identity providers, see link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/understanding-identity-provider[Understanding identity providers, window=blank].
+TIP: サポートされているアイデンティティプロバイダーの完全なリストについては、link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/understanding-identity-provider[アイデンティティプロバイダーの理解, window=blank] を参照してください。
 
 image::diagrams/07_08_rbac.png[OpenShift RBAC - Users Groups and Role Bindings, align=center, link=self, window=blank]
-== Configure LDAP
+== LDAP の設定（Configure LDAP）
 
-=== Step 1: Examine Default Authentication
+=== ステップ 1: デフォルト認証の確認（Examine Default Authentication）
 
-Check the current OAuth configuration:
+現在の OAuth 設定を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get oauth cluster -o yaml
 ----
 
-TIP: You can also view this in the console at **Administration > Cluster Settings > Configuration > OAuth** - it shows the configured identity providers in a readable format.
+TIP: コンソールの **Administration > Cluster Settings > Configuration > OAuth** でも確認できます。設定されているアイデンティティプロバイダーが読みやすい形式で表示されます。
 
-Look at the `spec.identityProviders` section. You'll see that an `htpasswd` identity provider is already configured - this was set up during cluster provisioning to provide the `admin` account you're using now.
+`spec.identityProviders` セクションを確認します。`htpasswd` アイデンティティプロバイダーがすでに設定されていることがわかります。これは、現在使用している `admin` アカウントを提供するために、クラスターのプロビジョニング中にセットアップされたものです。
 
 [NOTE]
 ====
-In a fresh cluster, `spec` would be empty (`spec: {}`). This workshop cluster has HTPasswd pre-configured. The OAuth configuration below includes both the existing HTPasswd provider and the new LDAP provider so both work simultaneously.
+新規作成直後のクラスターでは、`spec` は空（`spec: {}`）です。このワークショップクラスターには HTPasswd が事前設定されています。以下の OAuth 設定には、既存の HTPasswd プロバイダーと新しい LDAP プロバイダーの両方が含まれており、両方が同時に機能します。
 ====
 
-**What about `kubeadmin`?**
+**`kubeadmin` について**
 
-Fresh OpenShift clusters come with a `kubeadmin` bootstrap account stored as a Secret in `kube-system`. This account bypasses identity providers entirely - it's meant for initial setup only. On this workshop cluster, `kubeadmin` has already been removed and replaced with the `admin` HTPasswd account you're using now. That's the correct production posture.
+作成直後の OpenShift クラスターには、`kube-system` 内に Secret として保存された `kubeadmin` ブートストラップアカウントが用意されています。このアカウントはアイデンティティプロバイダーを完全にバイパスします。これは初期セットアップのみを目的としたものです。このワークショップクラスターでは、`kubeadmin` はすでに削除されており、現在使用している `admin` HTPasswd アカウントに置き換えられています。これが適切な本番環境の姿勢です。
 
-You can verify it's gone:
+削除されていることを確認できます：
 
 [source,bash,role="execute"]
 ----
 oc get secret -n kube-system kubeadmin -o yaml
 ----
 
-Expected: `not found` - confirming the bootstrap account has been removed.
+期待される結果：`not found` - ブートストラップアカウントが削除されていることを確認します。
 
-=== Step 2: Understand LDAP Structure
+=== ステップ 2: LDAP 構造の理解（Understand LDAP Structure）
 
-This lab environment provides LDAP with the following groups:
+このラボ環境では、以下のグループを持つ LDAP が提供されています：
 
-* **ose-user**: Users with OpenShift access (all users must be in this group)
-* **ose-normal-dev**: Regular developers (normaluser1, teamuser1, teamuser2)
-* **ose-fancy-dev**: Senior developers with elevated privileges (fancyuser1, fancyuser2)
-* **ose-teamed-app**: Project collaboration team (teamuser1, teamuser2)
+* **ose-user**: OpenShift アクセス権を持つユーザー（すべてのユーザーはこのグループに属する必要があります）
+* **ose-normal-dev**: 一般開発者（normaluser1、teamuser1、teamuser2）
+* **ose-fancy-dev**: 上級権限を持つシニア開発者（fancyuser1、fancyuser2）
+* **ose-teamed-app**: プロジェクトコラボレーションチーム（teamuser1、teamuser2）
 
-**LDAP user credentials:** All users have password `Op#nSh1ft`
+**LDAP ユーザー認証情報:** すべてのユーザーのパスワードは `Op#nSh1ft` です。
 
-=== Step 3: Configure LDAP Identity Provider
+=== ステップ 3: LDAP アイデンティティプロバイダーの設定（Configure LDAP Identity Provider）
 
-To configure LDAP authentication, we need:
+LDAP 認証を設定するには、以下が必要です：
 
-1. **Secret** containing the LDAP bind password
-2. **ConfigMap** containing the LDAP server CA certificate
-3. **OAuth configuration** defining the LDAP identity provider
+1. LDAP バインドパスワードを含む **Secret**
+2. LDAP サーバーの CA 証明書を含む **ConfigMap**
+3. LDAP アイデンティティプロバイダーを定義する **OAuth 設定**
 
-**Create the LDAP bind password Secret:**
+**LDAP バインドパスワードの Secret を作成します：**
 
 [source,bash,role="execute"]
 ----
@@ -76,7 +76,7 @@ oc create secret generic ldap-secret \
   -n openshift-config
 ----
 
-**Extract the CA certificate chain from the LDAP server:**
+**LDAP サーバーから CA 証明書チェーンを抽出します：**
 
 [source,bash,role="execute"]
 ----
@@ -84,9 +84,9 @@ mkdir -p $HOME/support
 echo | openssl s_client -connect ldap.jumpcloud.com:636 -showcerts 2>/dev/null | awk 'BEGIN{n=0} /BEGIN CERTIFICATE/{n++} n>=2{print}' > $HOME/support/ca.crt
 ----
 
-NOTE: This extracts the intermediate and root CA certificates directly from the LDAP server's TLS handshake. This is more reliable than downloading a static CA file, which may not match the server's current certificate chain.
+NOTE: これにより、LDAP サーバーの TLS ハンドシェイクから直接中間 CA 証明書およびルート CA 証明書を抽出します。これは、サーバーの現在の証明書チェーンと一致しない可能性がある静的な CA ファイルをダウンロードするよりも信頼性が高くなります。
 
-**Create ConfigMap with CA certificate:**
+**CA 証明書を使用して ConfigMap を作成します：**
 
 [source,bash,role="execute"]
 ----
@@ -95,51 +95,51 @@ oc create configmap ca-config-map \
   -n openshift-config
 ----
 
-**Create and apply the OAuth configuration:**
+**OAuth 設定を作成して適用します：**
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/07-ldap-authentication/configure-oauth-ldap.sh)
 ----
 
-This script creates an OAuth configuration that adds the LDAP identity provider alongside the existing HTPasswd provider. It configures: the bind DN (`uid=openshiftworkshop,...`), the LDAP URL (`ldaps://ldap.jumpcloud.com`) with a `memberOf` filter restricting login to the `ose-user` group, attribute mappings (`dn` -> ID, `mail` -> email, `cn` -> display name, `uid` -> username), and references the CA cert and bind password you created above.
+このスクリプトは、既存の HTPasswd プロバイダーとともに LDAP アイデンティティプロバイダーを追加する OAuth 設定を作成します。設定内容：バインド DN（`uid=openshiftworkshop,...`）、ログインを `ose-user` グループに限定する `memberOf` フィルター付き LDAP URL（`ldaps://ldap.jumpcloud.com`）、属性マッピング（`dn` -> ID、`mail` -> メールアドレス、`cn` -> 表示名、`uid` -> ユーザー名）、および上記で作成した CA 証明書とバインドパスワードを参照します。
 
-**Understanding the OAuth configuration:**
+**OAuth 設定の理解**
 
-The `oauth-cluster.yaml` file configures the LDAP identity provider. Key elements:
+`oauth-cluster.yaml` ファイルは LDAP アイデンティティプロバイダーを設定します。主な要素：
 
-**Key parameters:**
+**主要パラメーター：**
 
-* **name**: Unique identifier for this identity provider (can have multiple)
-* **mappingMethod: claim**: How usernames are assigned (first identity provider wins)
-* **attributes**: Maps LDAP fields to OpenShift user attributes
-* **bindDN/bindPassword**: Credentials for LDAP searches
-* **ca**: Certificate to validate LDAP server SSL
-* **url**: LDAP server location and search filter
+* **name**: このアイデンティティプロバイダーのユニーク識別子（複数持つことが可能）
+* **mappingMethod: claim**: ユーザー名のアサイン方法（最初のアイデンティティプロバイダーが優先される）
+* **attributes**: LDAP フィールドを OpenShift ユーザー属性にマッピング
+* **bindDN/bindPassword**: LDAP 検索用の認証情報
+* **ca**: LDAP サーバー SSL を検証する証明書
+* **url**: LDAP サーバーの位置および検索フィルター
 
-For detailed LDAP configuration, see link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-ldap-identity-provider[Configuring an LDAP identity provider, window=blank].
+詳細な LDAP 設定については、link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-ldap-identity-provider[LDAP アイデンティティプロバイダーの設定, window=blank] を参照してください。
 
-**Monitor the OAuth operator rollout:**
+**OAuth オペレーターの展開状況を監視します：**
 
 [source,bash,role="execute"]
 ----
 oc rollout status deployment/oauth-openshift -n openshift-authentication --timeout=120s
 ----
 
-NOTE: This may take a minute or two to complete. Only press **Ctrl+C** if it has been running for more than 5 minutes, then re-run the command.
+NOTE: 完了までに 1〜2 分かかる場合があります。5 分以上実行されている場合のみ **Ctrl+C** を押し、コマンドを再実行してください。
 
-Wait for: `deployment "oauth-openshift" successfully rolled out`
+待機対象: `deployment "oauth-openshift" successfully rolled out`
 
-**Verify OAuth pods are running:**
+**OAuth Pod が実行中であることを確認します：**
 
 [source,bash,role="execute"]
 ----
 oc get pods -n openshift-authentication
 ----
 
-All oauth-openshift pods should be `Running` and `Ready 1/1`.
+すべての oauth-openshift Pod が `Running` および `Ready 1/1` である必要があります。
 
-The OAuth pods need a few moments after rollout to fully initialize their LDAP connections. This checks that LDAP login actually works before moving on:
+OAuth Pod は展開後に LDAP 接続を完全に初期化するまで少し時間が必要です。次に進む前に、LDAP ログインが実際に機能することを確認します：
 
 [source,bash,role="execute",subs="attributes"]
 ----
@@ -154,24 +154,24 @@ oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_passw
 echo "LDAP authentication is ready"
 ----
 
-NOTE: This may take a minute or two to complete. Only press **Ctrl+C** if it has been running for more than 5 minutes, then re-run the command.
+NOTE: 完了までに 1〜2 分かかる場合があります。5 分以上実行されている場合のみ **Ctrl+C** を押し、コマンドを再実行してください。
 
-== Test & Sync Groups
+== テストとグループ同期（Test & Sync Groups）
 
-=== Step 4: Test LDAP Authentication
+=== ステップ 4: LDAP 認証のテスト（Test LDAP Authentication）
 
-If you reload the **OCP Console** tab and log out, you'll now see both identity providers on the login page:
+**OCP Console** タブを再読み込みしてログアウトすると、ログインページに両方のアイデンティティプロバイダーが表示されるようになります：
 
 image::ldap-login-selector.png[OpenShift login page showing htpasswd and ldap identity providers, link=self, window=blank]
-NOTE: We won't be logging into the console as the LDAP users in this workshop. Please log back in using **htpasswd** so you can continue investigating as admin.
+NOTE: このワークショップでは、LDAP ユーザーとしてコンソールにログインすることはありません。管理者として調査を続けるために、**htpasswd** を使用して再度ログインしてください。
 
 [cols="1,1"]
 |===
-| *Username:* | {openshift_cluster_admin_username}
-| *Password:* | {openshift_cluster_admin_password}
+| *ユーザー名:* | {openshift_cluster_admin_username}
+| *パスワード:* | {openshift_cluster_admin_password}
 |===
 
-First, capture the API server URL for login commands:
+まず、ログインコマンド用に API サーバー URL を取得します：
 
 [source,bash,role="execute"]
 ----
@@ -179,56 +179,56 @@ export OCP_SERVER=$(oc whoami --show-server)
 echo "API Server: $OCP_SERVER"
 ----
 
-Try logging in as a regular user:
+一般ユーザーとしてログインを試みます：
 
 [source,bash,role="execute"]
 ----
 oc login -u normaluser1 -p 'Op#nSh1ft' $OCP_SERVER --insecure-skip-tls-verify
 ----
 
-You should see `Login successful.` - the user was authenticated against the LDAP server.
+`Login successful.` と表示されるはずです。ユーザーは LDAP サーバーに対して認証されました。
 
-**Check your identity:**
+**自分のアイデンティティを確認します：**
 
 [source,bash,role="execute"]
 ----
 oc whoami
 ----
 
-Output: `normaluser1`
+出力: `normaluser1`
 
-**Check what you can do:**
+**実行可能な操作を確認します：**
 
 [source,bash,role="execute"]
 ----
 oc auth can-i create project
 ----
 
-Output: `no` (project self-provisioning is disabled in this environment)
+出力: `no`（この環境ではプロジェクトの自己プロビジョニングは無効化されています）
 
-Notice the user was **automatically created** on first login. Log back in as admin to view the user object.
+ユーザーが初回ログイン時に**自動的に作成された**ことに注目してください。クラスター管理者としてログインし直して、ユーザーオブジェクトを確認します。
 
-**Log back in as cluster admin:**
+**クラスター管理者として再度ログインします：**
 
 [source,bash,role="execute",subs="attributes"]
 ----
 oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_password} --insecure-skip-tls-verify
 ----
 
-**View the auto-created user:**
+**自動作成されたユーザーを表示します：**
 
 [source,bash,role="execute"]
 ----
 oc get users
 ----
 
-You'll see `normaluser1` was automatically created on first login.
+初回ログイン時に `normaluser1` が自動作成されたことがわかります。
 
-=== Step 5: Sync LDAP Groups to OpenShift
+=== ステップ 5: LDAP グループの OpenShift への同期（Sync LDAP Groups to OpenShift）
 
-LDAP group synchronization imports LDAP groups as OpenShift Groups, making RBAC management easier.
+LDAP グループの同期は、LDAP グループを OpenShift グループとしてインポートし、RBAC 管理を容易にします。
 
-**Create the group sync configuration:**
+**グループ同期設定を作成します：**
 
 [source,bash,role="execute"]
 ----
@@ -257,16 +257,16 @@ rfc2307:
 EOF
 ----
 
-This configuration searches for LDAP groups matching `ose-*`, creates matching OpenShift Groups, and populates membership from LDAP.
+この設定は、`ose-*` に一致する LDAP グループを検索し、一致する OpenShift グループを作成し、LDAP からメンバーシップを登録します。
 
-**Run the group sync:**
+**グループ同期を実行します：**
 
 [source,bash,role="execute"]
 ----
 oc adm groups sync --sync-config=$HOME/support/groupsync.yaml --confirm
 ----
 
-Output shows created groups:
+出力に作成されたグループが表示されます：
 
 ----
 group/ose-fancy-dev
@@ -275,14 +275,14 @@ group/ose-normal-dev
 group/ose-teamed-app
 ----
 
-**View the synced groups:**
+**同期されたグループを表示します：**
 
 [source,bash,role="execute"]
 ----
 oc get groups
 ----
 
-You'll see:
+以下のように表示されます：
 
 ----
 NAME             USERS
@@ -292,54 +292,54 @@ ose-teamed-app   teamuser1, teamuser2
 ose-user         fancyuser1, fancyuser2, normaluser1, teamuser1, teamuser2
 ----
 
-**Examine a specific group:**
+**特定のグループを検査します：**
 
 [source,bash,role="execute"]
 ----
 oc get group ose-fancy-dev -o yaml
 ----
 
-The group includes:
+グループに含まれるもの：
 
-* LDAP metadata (sync time, LDAP DN, LDAP server)
-* List of users in the group
+* LDAP メタデータ（同期時間、LDAP DN、LDAP サーバー）
+* グループ内のユーザーリスト
 
-**See this in the console too:** Navigate to **User Management -> Groups** in the **OCP Console**:
+**コンソールでも確認してみましょう:** **OCP Console** の **User Management -> Groups** に移動します：
 
 image::ldap-groups-console.png[User Management Groups showing synced LDAP groups with member counts, link=self, window=blank]
-Click on `ose-fancy-dev` - you'll see fancyuser1 and fancyuser2 listed as members. Now click **User Management -> Users**:
+`ose-fancy-dev` をクリックすると、fancyuser1 と fancyuser2 がメンバーとしてリストされているのがわかります。次に、**User Management -> Users** をクリックします：
 
 image::ldap-users-console.png[User Management Users showing only users who have logged in, link=self, window=blank]
-Notice only `normaluser1` appears (and `admin`). The other users exist in LDAP groups but haven't logged in yet, so OpenShift hasn't created their User objects.
+`normaluser1`（および `admin`）のみが表示されていることに注目してください。他のユーザーは LDAP グループ内に存在しますが、まだログインしていないため、OpenShift はユーザーオブジェクトを作成していません。
 
-This is an important distinction: **group membership is synced immediately**, but **User objects are created on first login**. In production, you might see a group with 50 members but only 10 User objects - that just means 40 people haven't logged in yet.
+これは重要な違いです。**グループメンバーシップは即座に同期されます**が、**ユーザーオブジェクトは初回ログイン時に作成されます**。本番環境では、グループに 50 人のメンバーがいても、ユーザーオブジェクトは 10 個しか存在しないという場合があります。これは単に 40 人がまだログインしていないことを意味します。
 
 [source,bash,role="execute"]
 ----
 oc get users
 ----
 
-Confirms the same thing via CLI - only users who have authenticated appear here.
+CLI からも同じことが確認できます。認証されたことのあるユーザーのみがここに表示されます。
 
-=== Step 6: Configure RBAC with Groups
+=== ステップ 6: グループを使用した RBAC の設定（Configure RBAC with Groups）
 
-Grant the `ose-fancy-dev` group **cluster-reader** privileges to view cluster-wide resources:
+`ose-fancy-dev` グループに **cluster-reader** 権限を付与し、クラスター全体のリソースを参照できるようにします：
 
 [source,bash,role="execute"]
 ----
 oc adm policy add-cluster-role-to-group cluster-reader ose-fancy-dev
 ----
 
-**What is cluster-reader?** A role that allows viewing administrative information (all projects, nodes, cluster settings) without edit permissions.
+**cluster-reader とは？** 編集権限なしで管理情報（すべてのプロジェクト、ノード、クラスター設定）の参照を許可するロールです。
 
-You can verify this in the console. Navigate to **User Management -> RoleBindings**, switch the Kind filter to **Cluster-wide RoleBindings**, and search for `cluster-reader`:
+コンソールで確認できます。**User Management -> RoleBindings** に移動し、Kind フィルターを **Cluster-wide RoleBindings** に切り替えて、`cluster-reader` を検索します：
 
 image::ldap-clusterrolebinding-reader.png[Cluster-wide RoleBindings showing ose-fancy-dev group bound to cluster-reader, link=self, window=blank]
-The first row shows `ose-fancy-dev` bound to `cluster-reader` across all namespaces - exactly what we just configured.
+最初の行に、すべてのネームスペースにわたって `ose-fancy-dev` が `cluster-reader` にバインドされているのが見えます。まさに今設定した内容です。
 
-For more on roles, see link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac[Using RBAC to define and apply permissions, window=blank].
+ロールの詳細については、link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac[RBAC を使用した権限の定義と適用, window=blank] を参照してください。
 
-**Test as a regular user:**
+**一般ユーザーとしてテスト：**
 
 [source,bash,role="execute"]
 ----
@@ -347,16 +347,16 @@ oc login -u normaluser1 -p 'Op#nSh1ft' $OCP_SERVER --insecure-skip-tls-verify
 oc whoami
 ----
 
-IMPORTANT: Verify `oc whoami` shows `normaluser1`. If it still shows `admin`, the login failed - wait 30 seconds and try again.
+IMPORTANT: `oc whoami` が `normaluser1` と表示することを確認してください。依然として `admin` と表示される場合は、ログインに失敗しています。30 秒待ってから再試行してください。
 
 [source,bash,role="execute"]
 ----
 oc get projects
 ----
 
-You should see no `app-` projects - normaluser1 isn't in any project-specific groups. You may see one or two system namespaces that grant access to all authenticated users - that's normal.
+`app-` プロジェクトは表示されないはずです。normaluser1 はどのプロジェクト固有のグループにも属していません。すべての認証済みユーザーにアクセスを許可する 1 つまたは 2 つのシステムネームスペースが表示される場合がありますが、これは正常です。
 
-**Test as a fancy developer:**
+**高級開発者（fancy developer）としてテスト：**
 
 [source,bash,role="execute"]
 ----
@@ -365,7 +365,7 @@ oc whoami
 oc get projects
 ----
 
-Now you see **all projects** in the cluster:
+クラスター内の**すべてのプロジェクト**が表示されるようになります：
 
 ----
 NAME                                     STATUS
@@ -376,9 +376,9 @@ openshift-monitoring                     Active
 ...
 ----
 
-This demonstrates group-based RBAC working correctly.
+これにより、グループベースの RBAC が正しく動作していることが証明されました。
 
-**Check current user:**
+**現在のユーザーを確認：**
 
 [source,bash,role="execute"]
 ----
@@ -386,18 +386,18 @@ oc whoami
 oc whoami --show-context
 ----
 
-== RBAC & Projects
+== RBAC とプロジェクト（RBAC & Projects）
 
-=== Step 7: Create Projects for Collaboration
+=== ステップ 7: コラボレーション用プロジェクトの作成（Create Projects for Collaboration）
 
-Log back in as cluster admin:
+クラスター管理者として再度ログインします：
 
 [source,bash,role="execute",subs="attributes"]
 ----
 oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_password} --insecure-skip-tls-verify
 ----
 
-Create a typical SDLC project structure:
+標準的な SDLC プロジェクト構造を作成します：
 
 [source,bash,role="execute"]
 ----
@@ -406,18 +406,18 @@ oc adm new-project app-test --display-name="Application Testing"
 oc adm new-project app-prod --display-name="Application Production"
 ----
 
-TIP: These projects are now visible in the console project dropdown. Navigate to **Home > Projects** to see all three with their display names.
+TIP: これらのプロジェクトはコンソールのプロジェクトドロップダウンに表示されるようになりました。**Home > Projects** に移動すると、表示名とともに 3 つすべてを確認できます。
 
-**Verify projects were created:**
+**プロジェクトが作成されたことを確認します：**
 
 [source,bash,role="execute"]
 ----
 oc get projects | grep app-
 ----
 
-=== Step 8: Map Groups to Projects
+=== ステップ 8: プロジェクトへのグループのマッピング（Map Groups to Projects）
 
-Grant the `ose-teamed-app` group **edit** access to dev and test:
+`ose-teamed-app` グループに dev および test への **edit** アクセス権を付与します：
 
 [source,bash,role="execute"]
 ----
@@ -425,45 +425,45 @@ oc adm policy add-role-to-group edit ose-teamed-app -n app-dev
 oc adm policy add-role-to-group edit ose-teamed-app -n app-test
 ----
 
-Grant **view** access to production:
+production への **view** アクセス権を付与します：
 
 [source,bash,role="execute"]
 ----
 oc adm policy add-role-to-group view ose-teamed-app -n app-prod
 ----
 
-Grant `ose-fancy-dev` group **edit** access to production:
+`ose-fancy-dev` グループに production への **edit** アクセス権を付与します：
 
 [source,bash,role="execute"]
 ----
 oc adm policy add-role-to-group edit ose-fancy-dev -n app-prod
 ----
 
-**View role bindings for a project:**
+**プロジェクトのロールバインディングを表示します：**
 
 [source,bash,role="execute"]
 ----
 oc get rolebindings -n app-dev
 ----
 
-**Describe a specific role binding:**
+**特定のロールバインディングの詳細を表示します：**
 
 [source,bash,role="execute"]
 ----
 oc describe rolebinding -n app-dev | grep -A 5 ose-teamed-app
 ----
 
-**Verify in the console.** Navigate to **User Management -> RoleBindings**, select project `app-dev`, and filter by **Namespace RoleBindings**:
+**コンソールで確認します。** **User Management -> RoleBindings** に移動し、プロジェクト `app-dev` を選択して、**Namespace RoleBindings** でフィルターをかけます：
 
 image::ldap-rolebindings-app-dev.png[RoleBindings for app-dev showing ose-teamed-app group with edit role, link=self, window=blank]
-You can immediately see that `ose-teamed-app` has the `edit` role in `app-dev`. Now switch the project to `app-prod`:
+`ose-teamed-app` が `app-dev` において `edit` ロールを持っていることが一目でわかります。次に、プロジェクトを `app-prod` に切り替えます：
 
 image::ldap-rolebindings-app-prod.png[RoleBindings for app-prod showing ose-fancy-dev with edit and ose-teamed-app with view, link=self, window=blank]
-Notice the separation of privileges at a glance - `ose-fancy-dev` has `edit` access to production while `ose-teamed-app` only has `view`. This is the kind of access review that the console makes much faster than parsing CLI output.
+一見して特権が分離されていることが確認できます。`ose-fancy-dev` は production に対する `edit` アクセス権を持つのに対し、`ose-teamed-app` は `view` のみを持っています。この種のアクセス確認は、コンソールを使用することで CLI 出力を解析するよりもはるかに高速になります。
 
-=== Step 9: Test Project Permissions
+=== ステップ 9: プロジェクト権限のテスト（Test Project Permissions）
 
-**Test as normaluser1 (no group access):**
+**normaluser1（グループアクセスなし）としてテスト：**
 
 [source,bash,role="execute"]
 ----
@@ -476,9 +476,9 @@ oc whoami
 oc get projects | grep app-
 ----
 
-Result: No `app-` projects visible. This user is not in any project-specific groups.
+結果: `app-` プロジェクトは表示されません。このユーザーはどのプロジェクト固有のグループにも属していません。
 
-**Test as teamuser1 (ose-teamed-app member):**
+**teamuser1（ose-teamed-app メンバー）としてテスト：**
 
 [source,bash,role="execute"]
 ----
@@ -491,7 +491,7 @@ oc whoami
 oc get projects | grep app-
 ----
 
-Now you see:
+以下が表示されます：
 
 ----
 NAME       DISPLAY NAME              STATUS
@@ -500,7 +500,7 @@ app-prod   Application Production    Active
 app-test   Application Testing       Active
 ----
 
-**Verify permissions in development (edit access):**
+**開発環境での権限の確認（edit アクセス）：**
 
 [source,bash,role="execute"]
 ----
@@ -509,9 +509,9 @@ oc auth can-i create pod -n app-dev
 oc auth can-i create service -n app-dev
 ----
 
-All should return: `yes` (teamuser1 has **edit** role in app-dev)
+すべて `yes` を返すはずです（teamuser1 は app-dev において **edit** ロールを持っています）。
 
-**Verify permissions in production (view-only access):**
+**本番環境での権限の確認（view 専用アクセス）：**
 
 [source,bash,role="execute"]
 ----
@@ -519,9 +519,9 @@ oc auth can-i create deployment -n app-prod
 oc auth can-i create pod -n app-prod
 ----
 
-Both should return: `no` (teamuser1 only has **view** role in app-prod)
+両方とも `no` を返すはずです（teamuser1 は app-prod において **view** ロールしか持っていません）。
 
-**Check what view access allows:**
+**view アクセスで何が許可されているか確認します：**
 
 [source,bash,role="execute"]
 ----
@@ -529,27 +529,27 @@ oc auth can-i get pods -n app-prod
 oc auth can-i list deployments -n app-prod
 ----
 
-Both return: `yes` (view role allows read operations)
+両方とも `yes` を返します（view ロールは読み取り操作を許可します）。
 
-**Perfect!** This demonstrates how operations teams verify RBAC is correctly configured without creating test resources.
+**完璧です！** これにより、運用チームがテストリソースを作成することなく RBAC が正しく設定されていることを検証できることが実証されました。
 
-== Security Best Practices
+== セキュリティのベストプラクティス（Security Best Practices）
 
-**Ensure kubeadmin is removed after configuring identity provider:**
+**アイデンティティプロバイダー設定後の kubeadmin の削除確実化：**
 
 [source,bash,role="execute",subs="attributes"]
 ----
 oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_password} --insecure-skip-tls-verify
 ----
 
-First, grant cluster-admin to a real user:
+まず、実際のユーザーに cluster-admin を付与します：
 
 [source,bash,role="execute"]
 ----
 oc adm policy add-cluster-role-to-user cluster-admin fancyuser1
 ----
 
-Verify it works:
+機能することを確認します：
 
 [source,bash,role="execute"]
 ----
@@ -557,52 +557,52 @@ oc login -u fancyuser1 -p 'Op#nSh1ft' $OCP_SERVER --insecure-skip-tls-verify
 oc auth can-i '*' '*'
 ----
 
-Output: `yes`
+出力: `yes`
 
-**In production, always remove kubeadmin:**
+**本番環境では、常に kubeadmin を削除してください：**
 
-After verifying your identity provider works and granting cluster-admin to at least one LDAP/OIDC user, delete the kubeadmin secret from the `kube-system` namespace. This removes the bootstrap account and ensures all cluster access goes through your enterprise identity provider. On this workshop cluster, kubeadmin has already been removed - you're using the `admin` HTPasswd account instead.
+アイデンティティプロバイダーが動作することを確認し、少なくとも 1 人の LDAP/OIDC ユーザーに cluster-admin を付与した後、`kube-system` ネームスペースから kubeadmin Secret を削除します。これによりブートストラップアカウントが排除され、すべてのクラスターアクセスがエンタープライズアイデンティティプロバイダーを経由するようになります。このワークショップクラスターでは、kubeadmin はすでに削除されており、代わりに `admin` HTPasswd アカウントを使用しています。
 
-**Automate LDAP group sync with CronJob:**
+**CronJob による LDAP グループ同期の自動化：**
 
-Instead of running group sync manually, production environments typically create a Kubernetes CronJob that runs the sync operation automatically (for example, every hour). This ensures LDAP group membership changes are reflected in OpenShift without manual intervention.
+グループ同期を手動で実行する代わりに、本番環境では通常、同期操作を自動的に実行する Kubernetes CronJob（たとえば 1 時間ごとなど）を作成します。これにより、手動の介入なしで LDAP グループメンバーシップの変更が OpenShift に反映されるようになります。
 
-The CronJob would:
+CronJob の動作内容：
 
-* Run on a regular schedule (e.g., `*/60 * * * *` for hourly)
-* Use a service account with appropriate permissions
-* Mount the group sync configuration from a ConfigMap
-* Execute `oc adm groups sync` with the `--confirm` flag
+* 定期的なスケジュールでの実行（例：1 時間ごとの場合は `*/60 * * * *`）
+* 適切な権限を持つサービスアカウントの使用
+* ConfigMap からのグループ同期設定のマウント
+* `--confirm` フラグを指定した `oc adm groups sync` の実行
 
-For complete implementation details, see the link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/ldap-syncing#ldap-syncing-running-all-ldap-sync_configuring-ldap-syncing[official documentation on automating LDAP sync, window=blank].
+完全な実装の詳細については、link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/ldap-syncing#ldap-syncing-running-all-ldap-sync_configuring-ldap-syncing[LDAP 同期の自動化に関する公式ドキュメント, window=blank] を参照してください。
 
-**For this lab, manual group sync is sufficient** for learning purposes.
+**このラボでは、学習目的のため手動グループ同期で十分です。**
 
-== Cleanup & Summary
+== クリーンアップとまとめ（Cleanup & Summary）
 
-=== Summary
+=== まとめ（Summary）
 
-You configured LDAP authentication end-to-end: connected to an external directory, synced groups, mapped those groups to project-level RBAC, and verified it by logging in as three different users with different access levels.
+LDAP 認証をエンドツーエンドで設定しました。外部ディレクトリへの接続、グループの同期、それらのグループのプロジェクトレベル RBAC へのマッピング、およびアクセスレベルの異なる 3 人の異なるユーザーとしてログインすることによる検証を行いました。
 
-**Production recommendations:**
+**本番環境での推奨事項：**
 
-1. Use LDAP/OIDC, never HTPasswd
-2. Remove kubeadmin after configuring a real identity provider
-3. Automate group sync with a CronJob
-4. Use groups for RBAC, not individual users
-5. Follow least-privilege: view over edit, edit over admin
+1. HTPasswd ではなく、LDAP/OIDC を使用する
+2. 実際のアイデンティティプロバイダーを設定した後は kubeadmin を削除する
+3. CronJob でグループ同期を自動化する
+4. 個別のユーザーではなく、グループを RBAC に使用する
+5. 最小権限の原則に従う：edit より view、admin より edit
 
-=== Additional Resources
+=== 追加リソース（Additional Resources）
 
-* **Authentication and Authorization Guide:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/index[Official documentation, window=blank]
-* **Identity Providers Overview:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/understanding-identity-provider[Understanding identity providers, window=blank]
-* **LDAP Configuration:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-ldap-identity-provider[Configuring LDAP identity provider, window=blank]
-* **RBAC Documentation:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac[Using RBAC, window=blank]
-* **Group Sync:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/ldap-syncing[Syncing LDAP groups, window=blank]
+* **認証および認可ガイド:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/index[公式ドキュメント, window=blank]
+* **アイデンティティプロバイダー概要:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/understanding-identity-provider[アイデンティティプロバイダーの理解, window=blank]
+* **LDAP 設定:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-ldap-identity-provider[LDAP アイデンティティプロバイダーの設定, window=blank]
+* **RBAC ドキュメント:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac[RBAC の使用, window=blank]
+* **グループ同期:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/ldap-syncing[LDAP グループの同期, window=blank]
 
-=== Cleanup
+=== クリーンアップ（Cleanup）
 
-Restore the cluster to its original authentication state before proceeding to other modules:
+他のモジュールに進む前に、クラスターを元の認証状態に復元します：
 
 [source,bash,role="execute",subs="attributes"]
 ----
