@@ -1,7 +1,7 @@
 = OpenShift Lightspeed
 :page-toclevels: 1
 
-== モジュールの概要（Module Overview）
+== モジュールの概要
 
 **所要時間:** 15〜20 分 +
 **形式:** ハンズオンでの AI アシスタント探索 +
@@ -18,14 +18,14 @@ OpenShift Lightspeed (OLS) は、OpenShift Web コンソールに統合された
 
 このモジュールでは、OpenShift Lightspeed を設定し、それを使用して OpenShift の概念の理解、クラスターリソースからの情報収集、故障したワークロードのトラブルシューティングなどを行います。
 
-=== 事前条件（Prerequisites）
+=== 事前条件
 
 OpenShift Lightspeed オペレーターはお使いのクラスターに事前インストールされています。ただし、完全に機能させるには、OpenShift Lightspeed を LLM プロバイダーに接続する必要があります。このモジュールでは、この接続を有効にするために必要な設定も作成します。
 
 image::diagrams/13_lightspeed.png[OpenShift Lightspeed Architecture, align=center, link=self, window=blank]
-== OpenShift Lightspeed のデプロイ（Deploy OpenShift Lightspeed）
+== OpenShift Lightspeed のデプロイ
 
-=== オペレーターインストールの検証（Verify the Operator Installation）
+=== オペレーターインストールの検証
 
 まず、OpenShift Lightspeed オペレーターがインストールされていることを確認します：
 
@@ -92,7 +92,7 @@ EOF
 * `spec.ols.defaultProvider` - 複数が設定されている場合のデフォルトプロバイダーを設定します
 * `spec.ols.introspectionEnabled` - `true` に設定すると、OpenShift Lightspeed は自動的に MCP サーバーをデプロイし、ユーザーがクラスターリソースを照会してコンテキストを意識した回答を提供できるようにします (OpenShift 4.20 のテクノロジープレビュー)
 
-=== OpenShift Lightspeed の初期化待機（Wait for OpenShift Lightspeed to Initialize）
+=== OpenShift Lightspeed の初期化待機
 
 TLS 証明書が生成されコンテナイメージがプルされる間、Lightspeed Pod の起動には 3〜5 分かかります。このコマンドは、すべての準備が整うまで待機します：
 
@@ -129,9 +129,9 @@ oc get olsconfig cluster -o jsonpath='{.status.conditions}' | jq .
 
 すべての条件で `"status": "True"` および `"message": "Ready"` が表示される必要があります。
 
-== Lightspeed の使用（Using Lightspeed）
+== Lightspeed の使用
 
-=== Web コンソールでの OpenShift Lightspeed へのアクセス（Access OpenShift Lightspeed in the Web Console）
+=== Web コンソールでの OpenShift Lightspeed へのアクセス
 
 Lightspeed のデプロイ中にコンソールからログアウトされた可能性があります。その場合は、以下で再度ログインしてください：
 
@@ -146,7 +146,7 @@ image::ols-chat-button.png[Lightspeed chat button in bottom right, link=self, wi
 ボタンをクリックして OpenShift Lightspeed のチャットウィンドウを開きます：
 
 image::ols-chat-window.png[OpenShift Lightspeed chat window, link=self, window=blank]
-=== 最初の質問（Starter Question）
+=== 最初の質問
 
 OpenShift Lightspeed を使用すると、ユーザーは自然言語を使用して OpenShift についてやり取りし、質問することができます。OpenShift に関する特定の知識を備えているため、このプラットフォームの概念やリソースを探索して理解するのに特に役立ちます。
 
@@ -162,9 +162,9 @@ OpenShift Lightspeed は、ベクターデータベースからドキュメン�
 OpenShift Lightspeed は、Deployment リソースと StatefulSet リソースの両方が何であるかを説明し、それらの比較を含む回答を提供する可能性が高いです。回答の最後までスクロールすると、OpenShift Lightspeed は最も関連性の高いドキュメントへのリンクを表示し、それらのセクションに迅速にアクセスしてさらに探索できるようにします：
 
 image::ols-related-docs.png[Related documentation in OpenShift Lightspeed, link=self, window=blank]
-== 機能（Capabilities）
+== 機能
 
-=== YAML 生成支援（Assisted YAML generation）
+=== YAML 生成支援
 
 OpenShift Lightspeed は現在の会話のコンテキストを維持するため、追加の質問をして以前の回答を洗練させたり拡大させたりすることができます。
 
@@ -176,7 +176,7 @@ Can you generate a YAML for a Deployment using the image red.ht/ols:2026?
 OpenShift Lightspeed はガイダンスを提供し、要求されたリソースを作成しますが、それらのリソースをクラスターに直接適用することはありません。これらをコピーして手動で適用できます：
 
 image::ols-copy-yaml.png[Copy YAML button in OpenShift Lightspeed, link=self, window=blank]
-=== クラスターとのやり取りとトラブルシューティング（Cluster Interaction and Troubleshooting）
+=== クラスターとのやり取りとトラブルシューティング
 
 ワークショップセットアップの一環として、意図的な問題を伴うデモ Pod が事前デプロイされています。OpenShift Lightspeed を使用してこれを診断してみましょう。
 
@@ -218,7 +218,7 @@ What's wrong in this pod?
 
 OpenShift Lightspeed は Pod 仕様を分析して問題を特定します（この場合は無効なノードセレクター）。さらに、問題を解決するのに役立つソリューションを提案する可能性が高いです。
 
-=== コンテナにとどまらない OpenShift Lightspeed（OpenShift Lightspeed Beyond Containers）
+=== コンテナにとどまらない OpenShift Lightspeed
 
 このモジュールを通じて、OpenShift Lightspeed が Pod、Deployment、Route、Service などのコンテナベースのワークロードにどのように役立つかを見てきました。ただし、OpenShift プラットフォームはコンテナにとどまりません。
 
@@ -228,7 +228,7 @@ OpenShift Virtualization を使用すると、コンテナと同じプラット�
 
 このモジュールはここで終了しますが、OpenShift Lightspeed オペレーターはワークショップの残りの期間もアクティブなままです。今後のモジュールを進めながら、必要に応じて概念の明確化、リソース定義の生成、仮想マシンやマルチクラスターのタスクの支援など、ご自由に使用し続けてください。
 
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
 デモネームスペースをクリーンアップします：
 
@@ -254,4 +254,4 @@ OpenShift Lightspeed は、コンソール内で直接 AI 支援による運用�
 * OpenShift Lightspeed チャットインターフェースへのアクセス
 * OpenShift Lightspeed を使用した OpenShift の概念の学習、構成の生成、問題のトラブルシューティング
 
-機能の一部のみを紹介しましたが、独自の知識を持ち込む機能 (Bring Your Own Knowledge) や、OpenShift Lightspeed をカスタム MCP に接続する機能など、さらに多くの機能があります。詳細については、https://www.redhat.com/en/products/interactive-walkthrough/red-hat-openshift-lightspeed[OpenShift Lightspeed 製品ページ, window=blank] を参照してください。
+機能の一部のみを紹介しましたが、独自の知識を持ち込む機能 (Bring Your Own Knowledge) や、OpenShift Lightspeed をカスタム MCP に接続する機能など、さらに多くの機能があります。詳細については、 https://www.redhat.com/en/products/interactive-walkthrough/red-hat-openshift-lightspeed[OpenShift Lightspeed product page, window=blank] を参照してください。
