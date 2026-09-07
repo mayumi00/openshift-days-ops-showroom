@@ -1,39 +1,39 @@
-= OpenID Connect (OIDC) Authentication with Keycloak
+= Keycloak による OpenID Connect (OIDC) 認証
 :page-toclevels: 1
 
-== Module Overview
+== モジュールの概要（Module Overview）
 
-**Duration:** 15-20 minutes +
-**Format:** Hands-on OIDC identity provider configuration +
-**Audience:** Platform Engineers, Operations Teams, Security Administrators
+**所要時間:** 15〜20 分 +
+**形式:** ハンズオンでの OIDC アイデンティティプロバイダー設定 +
+**対象者:** プラットフォームエンジニア、運用チーム、セキュリティ管理者
 
 include::partial$console-access.adoc[]
 
-OpenShift supports multiple identity providers - LDAP, OIDC, HTPasswd, GitHub, and more. In this module you'll deploy the **Red Hat build of Keycloak (RHBK)** and configure it as an OpenID Connect (OIDC) identity provider for OpenShift - the modern approach to enterprise SSO.
+OpenShift は、LDAP、OIDC、HTPasswd、GitHub など、複数のアイデンティティプロバイダーをサポートしています。このモジュールでは、**Red Hat build of Keycloak (RHBK)** をデプロイし、エンタープライズ SSO への現代的なアプローチである OpenShift 用の OpenID Connect (OIDC) アイデンティティプロバイダーとして設定します。
 
-You will:
+行う作業：
 
-* Deploy and configure Keycloak from scratch
-* Create realms, users, groups, and OIDC clients in the admin console
-* Integrate OpenShift OAuth with Keycloak
-* See how OIDC groups sync automatically (no `oc adm groups sync` required)
+* Keycloak をゼロからデプロイおよび設定する
+* 管理コンソールでレルム（Realm）、ユーザー、グループ、および OIDC クライアントを作成する
+* OpenShift OAuth と Keycloak を統合する
+* OIDC グループが自動的に同期される仕組みを確認する（`oc adm groups sync` は不要）
 
-The same concepts apply to Microsoft Entra ID, Okta, Google Workspace, and any OIDC provider - Keycloak just lets you see both sides of the integration.
+同じ概念が Microsoft Entra ID、Okta、Google Workspace、および任意の OIDC プロバイダーに適用されます。Keycloak を使用することで統合の双方の側面を確認できます。
 
-== Deploy Keycloak
+== Keycloak のデプロイ（Deploy Keycloak）
 
-=== Step 1: Install the RHBK Operator
+=== ステップ 1: RHBK オペレーターのインストール（Step 1: Install the RHBK Operator）
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/08-oidc-authentication/install-rhbk-operator.sh)
 ----
 
-NOTE: This takes a minute or two while the operator installs and the CRDs register. Please wait for it to complete - only press **Ctrl+C** if it has been running for more than 5 minutes.
+NOTE: オペレーターのインストールと CRD の登録が行われるため、1〜2 分かかります。完了するまでお待ちください。5 分以上実行されている場合のみ **Ctrl+C** を押してください。
 
-=== Step 2: Deploy Keycloak
+=== ステップ 2: Keycloak のデプロイ（Step 2: Deploy Keycloak）
 
-Deploy a Keycloak instance. We use `dev-file` for the embedded database - in production you'd use external PostgreSQL.
+Keycloak インスタンスをデプロイします。組み込みデータベースには `dev-file` を使用します（本番環境では外部の PostgreSQL を使用します）。
 
 [source,bash,role="execute"]
 ----
@@ -56,7 +56,7 @@ spec:
 EOF
 ----
 
-Wait for the pod to start (this takes a minute or two):
+Pod が起動するまで待ちます（これには 1〜2 分かかります）：
 
 [source,bash,role="execute"]
 ----
@@ -71,14 +71,14 @@ oc wait --for=condition=Ready pod/keycloak-0 -n rhbk --timeout=120s
 echo "Keycloak is running"
 ----
 
-Create a route for external access:
+外部アクセスのための Route を作成します：
 
 [source,bash,role="execute"]
 ----
 oc create route edge keycloak --service=keycloak-service --port=8080 -n rhbk
 ----
 
-Get the admin credentials - you'll need these to log into the Keycloak console:
+管理者認証情報を取得します。Keycloak コンソールへのログインに必要となります：
 
 [source,bash,role="execute"]
 ----
@@ -87,43 +87,43 @@ echo "Username: $(oc get secret keycloak-initial-admin -n rhbk -o jsonpath='{.da
 echo "Password: $(oc get secret keycloak-initial-admin -n rhbk -o jsonpath='{.data.password}' | base64 -d)"
 ----
 
-Copy the URL and open it in a **new browser tab**. Log in with the admin credentials above.
+URL をコピーして**新しいブラウザタブ**で開きます。上記の管理者認証情報でログインします。
 
-You're now in the Red Hat build of Keycloak admin console. You'll see the **master realm** welcome page:
+これで Red Hat build of Keycloak 管理コンソールに入りました。**master レルム**のウェルカムページが表示されます：
 
 image::oidc-rhbk-welcome.png[RHBK admin console welcome page showing master realm, link=self, window=blank]
-This is where you manage realms, users, clients, and authentication flows.
+ここでは、レルム、ユーザー、クライアント、および認証フローを管理します。
 
-== Configure Users & Groups
+== ユーザーとグループの設定（Configure Users & Groups）
 
-=== Step 3: Create an OpenShift Realm
+=== ステップ 3: OpenShift レルムの作成（Step 3: Create an OpenShift Realm）
 
-Keycloak uses **realms** to isolate sets of users, credentials, and clients. The default `master` realm is for Keycloak administration only - you should always create a separate realm for your applications.
+Keycloak は**レルム**を使用して、ユーザー、認証情報、およびクライアントのセットを分離します。デフォルトの `master` レルムは Keycloak の管理専用です。アプリケーション用には常に個別のレルムを作成する必要があります。
 
-1. In the left sidebar, click **Manage realms**
-2. Click **Create realm**
-3. Set **Realm name** to: `OpenShift`
+1. 左側のサイドバーで **Manage realms** をクリックします
+2. **Create realm** をクリックします
+3. **Realm name** を `OpenShift` に設定します
 +
 image::oidc-rhbk-create-realm.png[Create realm dialog with OpenShift as realm name, link=self, window=blank]
 +
-4. Click **Create**
+4. **Create** をクリックします
 
-You'll see both realms listed, with **OpenShift** as the current realm:
+両方のレルムがリストされ、**OpenShift** が現在のレルムとして表示されます：
 
 image::oidc-rhbk-realm-created.png[Manage realms showing master and OpenShift realms, link=self, window=blank]
-You're now working inside the OpenShift realm. Everything you create from here - users, groups, clients - belongs to this realm.
+これで OpenShift レルム内で作業を進めることになります。ここから作成するすべてのもの（ユーザー、グループ、クライアント）はこのレルムに属します。
 
-=== Step 4: Create Your First User
+=== ステップ 4: 最初のユーザーの作成（Step 4: Create Your First User）
 
-Create a user manually so you understand the Keycloak user management interface.
+Keycloak のユーザー管理インターフェースを理解するために、ユーザーを手動で作成します。
 
-IMPORTANT: All four fields (**Username**, **Email**, **First name**, **Last name**) must be filled in. Keycloak's user profile policy requires them - if any are missing, login will fail with an unhelpful error.
+IMPORTANT: 4つのフィールド（**Username**、**Email**、**First name**、**Last name**）すべてに入力する必要があります。Keycloak のユーザープロファイルポリシーでこれらが必須とされており、欠けているものがあると不親切なエラーでログインが失敗します。
 
-**Create admin1:**
+**admin1 の作成：**
 
-1. Click **Users** in the left sidebar
-2. Click **Add user**
-3. Fill in the user details:
+1. 左側のサイドバーで **Users** をクリックします
+2. **Add user** をクリックします
+3. ユーザーの詳細を入力します：
    - **Username**: `admin1`
    - **Email**: `admin1@example.com`
    - **First name**: `Admin`
@@ -131,64 +131,64 @@ IMPORTANT: All four fields (**Username**, **Email**, **First name**, **Last name
 +
 image::oidc-rhbk-create-user.png[Create user form with admin1 details filled in, link=self, window=blank]
 +
-4. Click **Create**
-5. Click the **Credentials** tab - you'll see "No credentials":
+4. **Create** をクリックします
+5. **Credentials** タブをクリックします。「No credentials」と表示されます：
 +
 image::oidc-rhbk-credentials-tab.png[Credentials tab showing No credentials with Set password button, link=self, window=blank]
 +
-6. Click **Set password**
-7. Enter password: `OpenShift123!` in both fields
-8. Turn **Temporary** to **Off** (so the user isn't forced to change password on first login)
+6. **Set password** をクリックします
+7. 両方のフィールドにパスワード `OpenShift123!` を入力します
+8. **Temporary** を **Off** に切り替えます（ユーザーが初回ログイン時にパスワード変更を強制されないようにするため）
 +
 image::oidc-rhbk-set-password.png[Set password dialog with Temporary set to Off, link=self, window=blank]
 +
-9. Click **Save** and confirm
+9. **Save** をクリックして確認します
 
-=== Step 5: Create Your First Group
+=== ステップ 5: 最初のグループの作成（Step 5: Create Your First Group）
 
-Groups in Keycloak map to OpenShift groups. When a user logs into OpenShift, their Keycloak group membership is included in the ID token - OpenShift reads it and creates the groups automatically.
+Keycloak 内のグループは OpenShift グループにマッピングされます。ユーザーが OpenShift にログインすると、Keycloak のグループメンバーシップが ID トークンに含まれ、OpenShift がそれを読み取ってグループを自動的に作成します。
 
-1. Click **Groups** in the left sidebar
-2. Click **Create group**
-3. Set name to: `ocp-admins` and click **Create**
+1. 左側のサイドバーで **Groups** をクリックします
+2. **Create group** をクリックします
+3. 名前を `ocp-admins` に設定し、**Create** をクリックします
 
 image::oidc-rhbk-groups-created.png[Groups page showing ocp-admins group, link=self, window=blank]
-**Assign admin1 to the group:**
+**admin1 をグループに割り当てる：**
 
-1. Click **Users** → click **admin1**
-2. Click the **Groups** tab - you'll see "No groups":
+1. **Users** をクリック → **admin1** をクリックします
+2. **Groups** タブをクリックします。「No groups」と表示されます：
 +
 image::oidc-rhbk-user-join-group.png[User Groups tab showing Join Group button, link=self, window=blank]
 +
-3. Click **Join Group** → select **ocp-admins** → click **Join**
+3. **Join Group** をクリック → **ocp-admins** を選択 → **Join** をクリックします
 
-=== Step 6: Script the Remaining Users and Groups
+=== ステップ 6: 残りのユーザーとグループのスクリプト処理（Step 6: Script the Remaining Users and Groups）
 
-You've seen how users and groups work in the Keycloak UI. Rather than repeating those clicks, we'll use the Keycloak REST API to create the remaining users, groups, and the OIDC client - the same API you'd use to automate this in production.
+Keycloak UI でユーザーとグループがどのように動作するかを確認しました。それらのクリック操作を繰り返す代わりに、Keycloak REST API を使用して残りのユーザー、グループ、および OIDC クライアントを作成します。これは、本番環境でこの作業を自動化する場合に使用するのと同じ API です。
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/08-oidc-authentication/setup-keycloak-oidc.sh)
 ----
 
-TIP: In production, you'd use a Keycloak realm export or the Keycloak Operator's `KeycloakRealmImport` CR to automate this entire setup declaratively.
+TIP: 本番環境では、Keycloak のレルムエクスポートまたは Keycloak オペレーターの `KeycloakRealmImport` CR を使用して、このセットアップ全体を宣言的に自動化します。
 
-Verify the setup in the Keycloak UI - click **Users** and **Groups** to confirm all three users and three groups are present. Click **Clients** → **openshift** to see the client configuration.
+Keycloak UI でセットアップを確認します。**Users** と **Groups** をクリックして、3 人のユーザーと 3 つのグループがすべて存在することを確認します。**Clients** → **openshift** をクリックしてクライアント設定を確認します。
 
-== Connect to OpenShift
+== OpenShift への接続（Connect to OpenShift）
 
-=== Step 7: Configure OpenShift OAuth
+=== ステップ 7: OpenShift OAuth の設定（Step 7: Configure OpenShift OAuth）
 
-The Keycloak setup script already created the `rhbk-client-secret` in `openshift-config` with the correct client secret. Now configure OAuth to use it:
+Keycloak セットアップスクリプトにより、正しいクライアントシークレットを持つ `rhbk-client-secret` が `openshift-config` 内にすでに作成されています。次に、これを使用するように OAuth を設定します：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/08-oidc-authentication/configure-oauth-oidc.sh)
 ----
 
-The key line is `claims.groups: [groups]` - this tells OpenShift to read the `groups` claim from the ID token and create OpenShift groups from it. This is why the script added the groups mapper to the OIDC client.
+重要な行は `claims.groups: [groups]` です。これは OpenShift に対し、ID トークンから `groups` クレームを読み取り、そこから OpenShift グループを作成するように指示します。これが、スクリプトがグループマッパーを OIDC クライアントに追加した理由です。
 
-Wait for the OAuth rollout:
+OAuth の展開を待ちます：
 
 [source,bash,role="execute"]
 ----
@@ -203,27 +203,27 @@ done
 echo "OAuth is live with rhbk provider - you can log in now"
 ----
 
-NOTE: This takes a minute or two while the OAuth pods restart with the new configuration. Please wait for it to complete - only press **Ctrl+C** if it has been running for more than 5 minutes.
+NOTE: OAuth Pod が新しい設定で再起動するため、1〜2 分かかります。完了するまでお待ちください。5 分以上実行されている場合のみ **Ctrl+C** を押してください。
 
-=== Step 8: Test OIDC Login and Automatic Group Sync
+=== ステップ 8: OIDC ログインと自動グループ同期のテスト（Step 8: Test OIDC Login and Automatic Group Sync）
 
-1. In the **OCP Console** tab, click your username (top-right) and select **Log out**
-2. Click the **reload button** (circular arrow) next to the OCP Console tab name. You'll see both identity providers:
+1. **OCP Console** タブで、ユーザー名（右上）をクリックし、**Log out** を選択します
+2. OCP Console タブ名の隣にある **再読み込みボタン**（丸い矢印）をクリックします。両方のアイデンティティプロバイダーが表示されます：
 +
 image::oidc-login-selector.png[OpenShift login page showing htpasswd and rhbk, link=self, window=blank]
 +
-3. Click **rhbk**
-4. Log in as `developer1` / `OpenShift123!`
+3. **rhbk** をクリックします
+4. `developer1` / `OpenShift123!` としてログインします
 
 [NOTE]
 ====
-You may see an **Authentication error** page:
+**Authentication error** ページが表示される場合があります：
 
 image::oidc-auth-error.png[Authentication error after OIDC login, link=self, window=blank]
-Click the **reload button** (circular arrow) next to the OCP Console tab to reload the page.
+OCP Console タブの隣にある **再読み込みボタン**（丸い矢印）をクリックしてページを再読み込みしてください。
 ====
 
-Now check what happened - when `developer1` logged in, their Keycloak group membership was included in the ID token. OpenShift reads the token and creates the groups automatically, no manual `oc adm groups sync` required. Back in the terminal:
+何が起こったか確認してみましょう。`developer1` がログインした際、その Keycloak グループメンバーシップが ID トークンに含まれていました。OpenShift はトークンを読み取り、グループを自動的に作成します。手動での `oc adm groups sync` は必要ありません。ターミナルに戻ります：
 
 [source,bash,role="execute",subs="attributes"]
 ----
@@ -235,34 +235,34 @@ oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_passw
 oc get groups
 ----
 
-You should see `ocp-developers` with `developer1` as a member - **created automatically** from the ID token. Unlike LDAP which requires manual `oc adm groups sync`, OIDC groups appear automatically.
+ID トークンから**自動作成された**、`developer1` をメンバーとする `ocp-developers` が表示されるはずです。手動での `oc adm groups sync` を必要とする LDAP とは異なり、OIDC グループは自動的に表示されます。
 
-TIP: You can also see the auto-created groups in the console at **User Management > Groups**. With OIDC, groups appear automatically - no manual sync step required.
+TIP: コンソールの **User Management > Groups** でも自動作成されたグループを確認できます。OIDC ではグループが自動的に表示されるため、手動同期手順は不要です。
 
 [source,bash,role="execute"]
 ----
 oc get user developer1 -o yaml
 ----
 
-In the output, look at the `identities` section - it shows the identity provider (`rhbk`) and the identifier of the user. The user was created automatically on first login. Notice `groups: null` - group membership isn't stored on the User object. It's on the Group objects that were auto-created from the OIDC token (as you saw from `oc get groups` above). Next we'll assign RBAC roles to those groups.
+出力の `identities` セクションを確認します。アイデンティティプロバイダー（`rhbk`）とユーザーの識別子が表示されます。ユーザーは初回ログイン時に自動作成されました。`groups: null` であることに注目してください。グループメンバーシップは User オブジェクトには保存されません。上記で `oc get groups` から確認したように、OIDC トークンから自動作成された Group オブジェクト上に存在します。次に、それらのグループに RBAC ロールを割り当てます。
 
-== Configure RBAC
+== RBAC の設定（Configure RBAC）
 
-.Users and groups are bound to roles that define what they can do - either within a project or cluster-wide
+.ユーザーとグループは、プロジェクト内またはクラスター全体で実行できる操作を定義するロールにバインドされます
 image::diagrams/07_08_rbac.png[OpenShift RBAC, align=center, link=self, window=blank]
-=== Step 9: Configure RBAC and Verify Permissions
+=== ステップ 9: RBAC の設定と権限の検証（Step 9: Configure RBAC and Verify Permissions）
 
-Grant permissions to the OIDC groups:
+OIDC グループに権限を付与します：
 
 [source,bash,role="execute"]
 ----
-# Cluster-admin for the admins group
+# admins グループに cluster-admin を付与
 oc adm policy add-cluster-role-to-group cluster-admin ocp-admins
 
-# Cluster-reader for viewers
+# viewers に cluster-reader を付与
 oc adm policy add-cluster-role-to-group cluster-reader ocp-viewers
 
-# Create projects and grant developer access
+# プロジェクトを作成し、デベロッパーのアクセス権を付与
 oc adm new-project app-development --display-name="Application Development"
 oc adm new-project app-production --display-name="Application Production"
 
@@ -270,79 +270,79 @@ oc adm policy add-role-to-group edit ocp-developers -n app-development
 oc adm policy add-role-to-group view ocp-developers -n app-production
 ----
 
-NOTE: You may see `Warning: Group 'ocp-admins' not found` or similar - this is normal. OIDC groups are only created in OpenShift when a user from that group logs in. Only `developer1` has logged in so far, so only `ocp-developers` exists. The role bindings are still created and will take effect when those users log in.
+NOTE: `Warning: Group 'ocp-admins' not found` または同様の警告が表示される場合がありますが、これは正常です。OIDC グループは、そのグループのユーザーがログインしたときにのみ OpenShift 内に作成されます。これまでは `developer1` のみがログインしているため、`ocp-developers` のみが存在します。ロールバインディングは作成されており、それらのユーザーがログインしたときに有効になります。
 
-Now verify - reload the **OCP Console** tab. Since developer1 is already logged in via OIDC, the console should now show the projects they have access to. You should see **Application Development** and **Application Production** in the project list.
+ここで確認します。**OCP Console** タブを再読み込みします。developer1 はすでに OIDC 経由でログインしているため、コンソールにアクセス可能なプロジェクトが表示されるはずです。プロジェクトリストに **Application Development** と **Application Production** が表示されます。
 
-Test permissions from the terminal using developer1's token:
+developer1 のトークンを使用してターミナルから権限をテストします：
 
-1. In the OCP Console (logged in as developer1), click your username (top-right) → **Copy login command** → click **rhbk** → **Display Token**
+1. OCP Console（developer1 としてログイン中）で、ユーザー名（右上）をクリック → **Copy login command** → **rhbk** をクリック → **Display Token** をクリックします
 +
 image::oidc-copy-login-command.png[User menu showing Copy login command option, link=self, window=blank]
 +
-2. Copy the `oc login --token=...` command and paste it in the terminal
+2. `oc login --token=...` コマンドをコピーしてターミナルに貼り付けます
 
-Verify you are logged in as developer1:
+developer1 としてログインしていることを確認します：
 
 [source,bash,role="execute"]
 ----
 oc whoami
 ----
 
-You should see `developer1`. If you still see the admin user, the token login may have failed - try copying and pasting it again.
+`developer1` と表示されるはずです。依然として管理者ユーザーが表示される場合は、トークンによるログインが失敗している可能性があります。もう一度コピーして貼り付けてみてください。
 
 [source,bash,role="execute"]
 ----
 oc auth can-i create deployment -n app-development
 ----
 
-Returns: `yes` (edit access from ocp-developers)
+結果: `yes`（ocp-developers からの edit アクセス権）
 
 [source,bash,role="execute"]
 ----
 oc auth can-i create deployment -n app-production
 ----
 
-Returns: `no` (view-only in production)
+结果: `no`（本番環境では view 専用）
 
-This is the standard RBAC pattern - users belong to groups, groups get RoleBindings to projects (e.g. edit access to app-development, view access to app-production). With OIDC, the groups are created automatically from the ID token instead of requiring manual sync.
+これが標準的な RBAC パターンです。ユーザーはグループに属し、グループはプロジェクトに対する RoleBinding（例: app-development への edit アクセス権、app-production への view アクセス権）を取得します。OIDC では、手動同期を必要とする代わりに、ID トークンからグループが自動的に作成されます。
 
-**Restore admin access:**
+**管理者アクセスの復元：**
 
 [source,bash,role="execute",subs="attributes"]
 ----
 oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_password} --insecure-skip-tls-verify
 ----
 
-== Cleanup & Summary
+== クリーンアップとまとめ（Cleanup & Summary）
 
-=== Cleanup
+=== クリーンアップ（Cleanup）
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/cleanup-scripts/cleanup-oidc.sh)
 ----
 
-=== Summary
+=== まとめ（Summary）
 
-**What you did:**
+**実施したこと：**
 
-* Deployed and configured the Red Hat build of Keycloak from scratch
-* Created a realm, users, groups, and an OIDC client in the admin console
-* Configured the groups protocol mapper that drives automatic group sync
-* Integrated OpenShift OAuth with Keycloak as an OIDC provider
-* Saw groups sync automatically from ID token claims - no manual sync required
+* Red Hat build of Keycloak をゼロからデプロイおよび設定した
+* 管理コンソールでレルム、ユーザー、グループ、および OIDC クライアントを作成した
+* 自動グループ同期を駆動するグループプロトコルマッパーを設定した
+* OpenShift OAuth を OIDC プロバイダーとして Keycloak と統合した
+* ID トークンのクレームからグループが自動的に同期されるのを確認した（手動同期は不要）
 
-**OIDC vs LDAP - key difference:**
+**OIDC と LDAP の主な違い：**
 
-* **LDAP:** Groups require manual `oc adm groups sync` (or a CronJob)
-* **OIDC:** Groups sync automatically on every login from token claims
+* **LDAP:** グループには手動での `oc adm groups sync`（または CronJob）が必要
+* **OIDC:** トークンクレームからログインごとにグループが自動的に同期される
 
-Both methods are valid - choose based on your organization's identity infrastructure. Many enterprises use Keycloak as a broker that federates to LDAP/AD backends, giving you OIDC's automatic sync with LDAP's existing user directory.
+両方の方法とも有効です。組織のアイデンティティインフラストラクチャに基づいて選択してください。多くの企業では Keycloak をブローカーとして使用し、LDAP/AD バックエンドとフェデレーションすることで、LDAP の既存のユーザーディレクトリを活かしつつ OIDC の自動同期機能を利用しています。
 
-=== Additional Resources
+=== 追加リソース（Additional Resources）
 
-* **OpenID Connect Configuration:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-oidc-identity-provider[Configuring an OpenID Connect identity provider, window=blank]
-* **Red Hat build of Keycloak:** link:https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak/[RHBK Documentation, window=blank]
-* **RHBK Operator:** link:https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak/26.0/html/operator_guide/index[RHBK Operator Guide, window=blank]
-* **RBAC Documentation:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac[Using RBAC, window=blank]
+* **OpenID Connect の設定:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/configuring-oidc-identity-provider[OpenID Connect アイデンティティプロバイダーの設定, window=blank]
+* **Red Hat build of Keycloak:** link:https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak/[RHBK ドキュメント, window=blank]
+* **RHBK オペレーター:** link:https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak/26.0/html/operator_guide/index[RHBK オペレーターガイド, window=blank]
+* **RBAC ドキュメント:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac[RBAC の使用, window=blank]
