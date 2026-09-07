@@ -1,4 +1,4 @@
-= セットアップと概要（Setup & Overview）
+= セットアップと概要
 :page-toclevels: 1
 
 **所要時間:** 15-20 分 +
@@ -8,7 +8,7 @@ include::partial$console-access.adoc[]
 
 image::ops-day-banner.png[OpenShift Ops Day, width=100%]
 
-== さあ、始めましょう（Let's Go）
+== さあ、始めましょう
 
 あなたには、稼働中の OpenShift クラスターへの cluster-admin（クラスター管理者）アクセス権が付与されています。すべてが正常に動作しているか確認しましょう。以下のコマンドをクリックしてください：
 
@@ -33,7 +33,7 @@ oc get clusterversion
 
 クラスターのバージョンとアップデートチャネルが表示されます。準備完了です。
 
-== このワークショップについて（About This Workshop）
+== このワークショップについて
 
 どのような運用チームも、Kubernetes において同じ壁に突き当たります：
 
@@ -43,7 +43,7 @@ oc get clusterversion
 
 このワークショップでは、ハンズオン演習を通じてそれらの疑問に答えることができます。障害を発生させてそれを修復し、実際の障害モードを診断し、本番環境のセキュリティを設定し、何か問題が発生した際に OpenShift がどのように見えるか（そしてどれほど迅速に復旧できるか）を確認します。
 
-=== ワークショップインターフェース（Your Workshop Interface）
+=== ワークショップインターフェース
 
 ワークショップは、以下のパネルで構成される分割パネル形式のインターフェースで実行されます：
 
@@ -74,7 +74,7 @@ image::showroom-tabs.png[Showroom interface showing tabs for OCP Console, Termin
 
 TIP: ハイライトされたコマンドブロックは**クリック可能**です。クリックすると「Terminal」タブに切り替わり、自動的に実行されます。
 
-=== モジュール（Modules）
+=== モジュール
 
 [NOTE]
 ====
@@ -85,26 +85,26 @@ TIP: ハイライトされたコマンドブロックは**クリック可能**�
 |===
 |領域 |行うこと
 
-|**プラットフォームの基礎 (Platform Fundamentals)**
+|**プラットフォームの基礎**
 |クラスターの健全性を検証し、etcd メトリクスを確認し、アプリをデプロイして 30 秒で公開する
 
-|**アプリケーションの運用 (Application Operations)**
+|**アプリケーションの運用**
 |ワークロードをデプロイし、意図的に Readiness プローブを失敗させ、実際の負荷下で Horizontal Pod Autoscaler (HPA) を使用してスケーリングし、ネットワークポリシーを設定する
 
-|**アイデンティティとアクセス (Identity & Access)**
+|**アイデンティティとアクセス**
 |LDAP および OIDC 認証を統合し、グループを同期し、異なるユーザーとしてログインして RBAC をテストする
 
-|**Day 2 運用 (Day 2 Operations)**
+|**Day 2 運用**
 |アラートルールを作成し、ロギングをセットアップし、分散トレーシングを設定し、VPA でワークロードを適正規模化する
 
-|**高度な機能 (Advanced Capabilities)**
+|**高度な機能**
 |コンテナと並行して VM を実行しライブマイグレーションを行い、ACM で複数のクラスターを管理し、ACS で脆弱性をスキャンする
 
-|**開発者の生産性 (Developer Productivity)**
+|**開発者の生産性**
 |Developer Hub にアプリケーションを登録し、ゴールデンパステンプレートが運用チームへのチケットをセルフサービスへ置き換える様子を確認する
 |===
 
-== プラットフォームの探索（Exploring the Platform）
+== プラットフォームの探索
 
 image::diagrams/01_platform_architecture.png[OpenShift Platform Architecture, align=center, link=self, window=blank]
 お使いのクラスターは、モニタリング、コンテナレジストリ、Ingress ルーティング、Web コンソールをあらかじめ統合した状態で稼働しています。何が含まれているか確認してみましょう。
@@ -150,7 +150,7 @@ image::ocp-dashboard-overview.png[OpenShift Administrator Dashboard Overview, li
 
 この単一のダッシュボードにより、クラスターの健全性、使用率、インベントリ、および最近のイベントをすべて1つのビューで確認でき、セットアップは一切不要です。
 
-== プラットフォーム機能（Platform Capabilities）
+== プラットフォーム機能
 
 image::diagrams/01_control_plane.png[Control Plane Responsibilities, 300, align=center, link=self, window=blank]
 以下に示すモニタリング、コンテナレジストリ、Ingress ルーティングのすべては、誰かがログインする前からすでに稼働していました。それを確認してみましょう。
@@ -301,7 +301,7 @@ httpd テストページの HTML が表示されるはずです。サービス�
 oc delete project quick-demo &>/dev/null & disown
 ----
 
-== クラスター管理（Cluster Management）
+== クラスター管理
 
 === ノード
 
@@ -456,7 +456,7 @@ Red Hat、認定パートナー、コミュニティのオプションが混ざ�
 image::software-catalog-operators.png[Software Catalog filtered to Operators showing available operator tiles, link=self, window=blank]
 タイルを参照し、興味のあるものをクリックしてみてください。これはあなたのクラスターですので、自由に探索してください。
 
-== 次のステップ（What's Next）
+== 次のステップ
 
 モニタリング、レジストリ、ルーティング、ノード管理、アップグレード、すぐにインストールできるオペレーターのカタログなど、初期状態（Out-of-the-box）で稼働しているものを確認しました。いずれもセットアップを必要としませんでした。
 
