@@ -1,4 +1,4 @@
-= アイデンティティとユーザー（Identity & Users）
+= アイデンティティとユーザー
 :page-toclevels: 1
 
 **所要時間:** 15〜20 分 +
@@ -6,7 +6,7 @@
 
 include::partial$console-access.adoc[]
 
-== シナリオ（The Scenario）
+== シナリオ
 
 お使いのクラスターは HTPasswd 管理者アカウントで動作しています。初期セットアップには問題ありませんが、本番環境には本物のアイデンティティ管理が必要です。このモジュールでは、LDAP ディレクトリを統合し、グループを OpenShift に同期し、異なるチームが異なるアクセス権を取得できるように RBAC を構成し、実際にユーザーとしてログインしてテストします。
 
@@ -15,9 +15,9 @@ OpenShift の OAuth サーバーは、LDAP、OpenID Connect、HTPasswd、GitHub�
 TIP: サポートされているアイデンティティプロバイダーの完全なリストについては、link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/understanding-identity-provider[アイデンティティプロバイダーの理解, window=blank] を参照してください。
 
 image::diagrams/07_08_rbac.png[OpenShift RBAC - Users Groups and Role Bindings, align=center, link=self, window=blank]
-== LDAP の設定（Configure LDAP）
+== LDAP の設定
 
-=== ステップ 1: デフォルト認証の確認（Examine Default Authentication）
+=== ステップ 1: デフォルト認証の確認
 
 現在の OAuth 設定を確認します：
 
@@ -48,7 +48,7 @@ oc get secret -n kube-system kubeadmin -o yaml
 
 期待される結果：`not found` - ブートストラップアカウントが削除されていることを確認します。
 
-=== ステップ 2: LDAP 構造の理解（Understand LDAP Structure）
+=== ステップ 2: LDAP 構造の理解
 
 このラボ環境では、以下のグループを持つ LDAP が提供されています：
 
@@ -59,7 +59,7 @@ oc get secret -n kube-system kubeadmin -o yaml
 
 **LDAP ユーザー認証情報:** すべてのユーザーのパスワードは `Op#nSh1ft` です。
 
-=== ステップ 3: LDAP アイデンティティプロバイダーの設定（Configure LDAP Identity Provider）
+=== ステップ 3: LDAP アイデンティティプロバイダーの設定
 
 LDAP 認証を設定するには、以下が必要です：
 
@@ -156,9 +156,9 @@ echo "LDAP authentication is ready"
 
 NOTE: 完了までに 1〜2 分かかる場合があります。5 分以上実行されている場合のみ **Ctrl+C** を押し、コマンドを再実行してください。
 
-== テストとグループ同期（Test & Sync Groups）
+== テストとグループ同期
 
-=== ステップ 4: LDAP 認証のテスト（Test LDAP Authentication）
+=== ステップ 4: LDAP 認証のテスト
 
 **OCP Console** タブを再読み込みしてログアウトすると、ログインページに両方のアイデンティティプロバイダーが表示されるようになります：
 
@@ -224,7 +224,7 @@ oc get users
 
 初回ログイン時に `normaluser1` が自動作成されたことがわかります。
 
-=== ステップ 5: LDAP グループの OpenShift への同期（Sync LDAP Groups to OpenShift）
+=== ステップ 5: LDAP グループの OpenShift への同期
 
 LDAP グループの同期は、LDAP グループを OpenShift グループとしてインポートし、RBAC 管理を容易にします。
 
@@ -321,7 +321,7 @@ oc get users
 
 CLI からも同じことが確認できます。認証されたことのあるユーザーのみがここに表示されます。
 
-=== ステップ 6: グループを使用した RBAC の設定（Configure RBAC with Groups）
+=== ステップ 6: グループを使用した RBAC の設定
 
 `ose-fancy-dev` グループに **cluster-reader** 権限を付与し、クラスター全体のリソースを参照できるようにします：
 
@@ -356,7 +356,7 @@ oc get projects
 
 `app-` プロジェクトは表示されないはずです。normaluser1 はどのプロジェクト固有のグループにも属していません。すべての認証済みユーザーにアクセスを許可する 1 つまたは 2 つのシステムネームスペースが表示される場合がありますが、これは正常です。
 
-**高級開発者（fancy developer）としてテスト：**
+**fancy developerとしてテスト：**
 
 [source,bash,role="execute"]
 ----
@@ -386,9 +386,9 @@ oc whoami
 oc whoami --show-context
 ----
 
-== RBAC とプロジェクト（RBAC & Projects）
+== RBAC とプロジェクト
 
-=== ステップ 7: コラボレーション用プロジェクトの作成（Create Projects for Collaboration）
+=== ステップ 7: コラボレーション用プロジェクトの作成
 
 クラスター管理者として再度ログインします：
 
@@ -415,7 +415,7 @@ TIP: これらのプロジェクトはコンソールのプロジェクトドロ
 oc get projects | grep app-
 ----
 
-=== ステップ 8: プロジェクトへのグループのマッピング（Map Groups to Projects）
+=== ステップ 8: プロジェクトへのグループのマッピング
 
 `ose-teamed-app` グループに dev および test への **edit** アクセス権を付与します：
 
@@ -461,7 +461,7 @@ image::ldap-rolebindings-app-dev.png[RoleBindings for app-dev showing ose-teamed
 image::ldap-rolebindings-app-prod.png[RoleBindings for app-prod showing ose-fancy-dev with edit and ose-teamed-app with view, link=self, window=blank]
 一見して特権が分離されていることが確認できます。`ose-fancy-dev` は production に対する `edit` アクセス権を持つのに対し、`ose-teamed-app` は `view` のみを持っています。この種のアクセス確認は、コンソールを使用することで CLI 出力を解析するよりもはるかに高速になります。
 
-=== ステップ 9: プロジェクト権限のテスト（Test Project Permissions）
+=== ステップ 9: プロジェクト権限のテスト
 
 **normaluser1（グループアクセスなし）としてテスト：**
 
@@ -533,9 +533,9 @@ oc auth can-i list deployments -n app-prod
 
 **完璧です！** これにより、運用チームがテストリソースを作成することなく RBAC が正しく設定されていることを検証できることが実証されました。
 
-== セキュリティのベストプラクティス（Security Best Practices）
+== セキュリティのベストプラクティス
 
-**アイデンティティプロバイダー設定後の kubeadmin の削除確実化：**
+**アイデンティティプロバイダーの構成後は、kubeadmin が削除されていることを確認してください**
 
 [source,bash,role="execute",subs="attributes"]
 ----
@@ -578,9 +578,9 @@ CronJob の動作内容：
 
 **このラボでは、学習目的のため手動グループ同期で十分です。**
 
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
-=== まとめ（Summary）
+=== まとめ
 
 LDAP 認証をエンドツーエンドで設定しました。外部ディレクトリへの接続、グループの同期、それらのグループのプロジェクトレベル RBAC へのマッピング、およびアクセスレベルの異なる 3 人の異なるユーザーとしてログインすることによる検証を行いました。
 
@@ -592,7 +592,7 @@ LDAP 認証をエンドツーエンドで設定しました。外部ディレク
 4. 個別のユーザーではなく、グループを RBAC に使用する
 5. 最小権限の原則に従う：edit より view、admin より edit
 
-=== 追加リソース（Additional Resources）
+=== 追加リソース
 
 * **認証および認可ガイド:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/index[公式ドキュメント, window=blank]
 * **アイデンティティプロバイダー概要:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/understanding-identity-provider[アイデンティティプロバイダーの理解, window=blank]
@@ -600,7 +600,7 @@ LDAP 認証をエンドツーエンドで設定しました。外部ディレク
 * **RBAC ドキュメント:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/using-rbac[RBAC の使用, window=blank]
 * **グループ同期:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/ldap-syncing[LDAP グループの同期, window=blank]
 
-=== クリーンアップ（Cleanup）
+=== クリーンアップ
 
 他のモジュールに進む前に、クラスターを元の認証状態に復元します：
 
