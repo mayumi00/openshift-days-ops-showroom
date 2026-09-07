@@ -5,13 +5,13 @@
 
 include::partial$console-access.adoc[]
 
-== シナリオ（The Scenario）
+== シナリオ
 
 データベース、ミドルウェア、Windows サービスなど、一部のワークロードはまだコンテナ化できません。OpenShift Virtualization を使用すると、KubeVirt（RHEL KVM 上に構築された CNCF プロジェクト）を使用して、同じプラットフォーム上でコンテナと並行してこれらの VM を実行できます。同じスケジューラー、同じネットワーク、同じモニタリング、同じ RBAC、同じ `oc` コマンドが使用可能です。
 
 このモジュールでは、コンソールから VM を作成し、それが裏で実際には単なる Pod であることを確認し、ノード間でライブマイグレーションを行い、クローンを作成し、スナップショットを取得します。これらはすべて、コンテナに使用するのと同じツールで行います。
 
-=== 事前条件の確認（Prerequisites Check）
+=== 事前条件の確認
 
 OpenShift Virtualization はすでにインストールされている必要があります。確認します：
 
@@ -25,9 +25,9 @@ oc get csv -n openshift-cnv | grep kubevirt
 kubevirt-hyperconverged-operator.v4.20.x   OpenShift Virtualization   4.20.x   Succeeded
 ----
 
-== VM の作成と探索（Create & Explore a VM）
+== VM の作成と探索
 
-=== VM の作成（Create a VM）
+=== VM の作成
 
 まず、このモジュール用のプロジェクトを作成します：
 
@@ -102,7 +102,7 @@ echo "Password: $(echo "$DATA" | grep 'password:' | awk '{print $2}')"
 
 サイズを選び、ブートイメージを選び、デプロイする。YAML は不要です。
 
-=== それは単なる Pod です（It's Just a Pod）
+=== それは単なる Pod です
 
 これが運用チームにとって最も重要なポイントです。VM は `virt-launcher` Pod の内部で動作します。つまり、Pod の管理についてすでに知っているすべての知識が VM にも適用されます。同じスケジューラー、同じ RBAC、同じリソースクォータ、同じ `oc` コマンド。VM とコンテナで別々のツール、別々のチーム、別々のランブックを用意する必要はありません：
 
@@ -125,9 +125,9 @@ virt-launcher-rhel9-vm-xxxxx   2/2     Running   0          3m
 oc describe pod -l vm.kubevirt.io/name=rhel9-vm -n vm-demo | tail -10
 ----
 
-== モニタリングとネットワーク（Monitoring & Networking）
+== モニタリングとネットワーク
 
-=== 統合モニタリング（Unified Monitoring）
+=== 統合モニタリング
 
 VM メトリクスは、コンテナと同じ Prometheus スタックに流れ込みます。すべてに対して 1 つのダッシュボードで対応できます。VM 用に個別のモニタリングツールを用意する必要はありません。
 
@@ -147,7 +147,7 @@ image::virt-metrics-tab.png[VM Metrics tab showing Memory CPU and Storage graphs
 oc adm top pods -n vm-demo
 ----
 
-=== VM の公開（コンテナと同じネットワーク）（Expose the VM (Same Networking as Containers)）
+=== VM の公開（コンテナと同じネットワーク）
 
 VM はコンテナと同じ SDN 上で Pod IP を取得します。同じ Service、同じ Route、同じ NetworkPolicy を使用します。VM とコンテナで単一のネットワークモデルを使用します：
 
@@ -184,9 +184,9 @@ oc get svc rhel9-vm-ssh -n vm-demo
 
 Web アプリケーション（Apache、IIS、Tomcat）を実行している VM の場合、ポート 80/443 で Service を作成し、TLS エッジ終端を備えた Route を作成します。これはコンテナに使用するのとまったく同じワークフローです。マルチティアアプリケーションを移行する場合、MTV で VM を移行し、Service と Route で接続すれば、アプリケーションを変更することなく OpenShift 上で稼働させることができます。
 
-== VM ライフサイクル（VM Lifecycle）
+== VM ライフサイクル
 
-=== ライブマイグレーション（Live Migration）
+=== ライブマイグレーション
 
 これは OpenShift Virtualization を本番環境に対応させるための機能です。ノードにパッチを適用したり、OS をアップグレードしたり、ハードウェアを交換したりする必要がある場合、ノードをドレイン（排他）します。コンテナは自動的に再スケジューリングされ、VM も自動的にライブマイグレーションされます。`oc adm drain` はその両方を処理します。メンテナンスウィンドウ中のダウンタイムはゼロです。
 
@@ -236,7 +236,7 @@ oc get vmi rhel9-vm -n vm-demo -o jsonpath='Node: {.status.nodeName}' && echo ""
 
 VM は稼働状態を維持したまま移動しました。ダウンタイムはなく、再接続も不要です。
 
-=== VM のクローン（Clone a VM）
+=== VM のクローン
 
 テスト、開発環境、またはスケールアウトのために VM の別のコピーが必要ですか？クローンを作成しましょう。これにより、VM のディスクと構成の完全なコピーが作成されます。
 
@@ -250,6 +250,7 @@ image::virt-actions-clone.png[Actions dropdown with Clone option highlighted, li
 . **Clone** をクリックします
 +
 image::virt-clone-config.png[Clone VirtualMachine dialog with name and configuration, link=self, window=blank]
+
 **ステップ 2: クローン進行状況の観察**
 
 ダイアログにクローンの進行状況が表示されます： **Request sent** -> **In process** -> **Created**:
@@ -262,7 +263,7 @@ image::virt-clone-complete.png[Clone complete showing both rhel9-vm and rhel9-vm
 
 IMPORTANT: 続行する前に、左側のサイドバーで **rhel9-vm** をクリックして戻ってください。次のステップ（スナップショットとリストア）は、クローンではなく元の VM で行う必要があります。
 
-=== スナップショット（Snapshots）
+=== スナップショット
 
 すべての運用チームは、何かを破壊してしまったパッチに苦しめられた経験を持っています。スナップショットは安全網を提供します。変更前に VM のディスクと構成をキャプチャし、問題が発生した場合は数秒でロールバックできます。
 
@@ -354,9 +355,9 @@ cat /etc/hostname
 
 Terminal タブの **再読み込みボタン** をクリックしてコンソールを抜けます。
 
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
-=== まとめ（Summary）
+=== まとめ
 
 [cols="1,2"]
 |===
@@ -386,7 +387,7 @@ Terminal タブの **再読み込みボタン** をクリックしてコンソ�
 
 **価値:** 1つのプラットフォーム上で VM とコンテナを並行して実行できます。1セットのツール、1セットのスキルです。準備ができたら Migration Toolkit for Virtualization (MTV) を使用して既存の VM を移行することも、無期限で実行することもできます。OpenShift はその両方をサポートしています。Windows Server は SVVP 認定されており、RHEL/Fedora/CentOS は事前キャッシュされたイメージから数秒で起動します。
 
-=== クリーンアップ（Cleanup）
+=== クリーンアップ
 
 VM ディスクとネームスペースの削除には数分かかります。これはバックグラウンドで実行されるため、すぐに次のモジュールに進むことができます。
 
@@ -401,7 +402,7 @@ VM ディスクとネームスペースの削除には数分かかります。�
 echo "Cleanup running in background - you can continue to the next module"
 ----
 
-=== 追加リソース（Additional Resources）
+=== 追加リソース
 
 * **OpenShift Virtualization:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/index[Virtualization ドキュメント, window=blank]
 * **virtctl リファレンス:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/virt-using-the-cli-tools#virt-virtctl-commands_virt-using-the-cli-tools[virtctl コマンド, window=blank]
