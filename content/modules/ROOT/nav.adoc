@@ -54,7 +54,7 @@ endif::[]
 
 // Advanced Topics
 ifeval::["{module_enable_virt}" == "true"]
-* xref:11-virtualization.adoc[仮想化]
+* xref:11-virtualization.adoc[Virtualization]
 endif::[]
 ifeval::["{module_enable_devhub}" == "true"]
 * xref:12-developer-hub.adoc[Developer Hub]
