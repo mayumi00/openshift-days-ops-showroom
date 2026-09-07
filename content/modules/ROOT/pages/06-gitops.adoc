@@ -1,95 +1,95 @@
-= GitOps - Declarative Cluster Management
+= GitOps - 宣言的クラスター管理（GitOps - Declarative Cluster Management）
 :page-toclevels: 1
 
-== Getting Started
+== はじめに（Getting Started）
 
-=== Module Overview
+=== モジュールの概要（Module Overview）
 
-**Duration:** 10-15 minutes +
-**Format:** Hands-on +
-**Audience:** Platform Engineers, Operations Teams, SRE
+**所要時間:** 10〜15 分 +
+**形式:** ハンズオン +
+**対象者:** プラットフォームエンジニア、運用チーム、SRE
 
 include::partial$console-access.adoc[]
 
-As an OpenShift administrator managing multiple clusters, you need every cluster configured the same way - same quotas, same network policies, same security baselines. Making these changes manually on each cluster is slow, error-prone, and impossible to audit.
+複数のクラスターを管理する OpenShift 管理者には、すべてのクラスターを同一の方式（同一のクォータ、同一のネットワークポリシー、同一のセキュリティベースライン）で構成することが求められます。これらの変更を各クラスターで手動で行うのは時間がかかり、エラーが発生しやすく、監査も不可能です。
 
-GitOps solves this by treating cluster configuration as code in a Git repository. If you're familiar with Infrastructure as Code (IaC), GitOps is a way to manage IaC for your clusters. A tool called ArgoCD continuously watches that repository and ensures every cluster matches the desired state. If someone makes a manual change, ArgoCD detects the drift and can automatically fix it.
+GitOps は、クラスターの構成を Git リポジトリ内のコードとして扱うことでこの問題を解決します。Infrastructure as Code (IaC) に馴染みがある場合、GitOps はクラスター用 IaC を管理する手法と捉えられます。ArgoCD と呼ばれるツールがそのリポジトリを継続的に監視し、すべてのクラスターが期待される状態（Desired State）と一致するように保ちます。誰かが手動で変更を加えた場合でも、ArgoCD が構成の乖離（ドレーフト/drift）を検出し、自動的に修正できます。
 
-In this module, you will use ArgoCD to deploy a production-ready project configuration from Git, then break it on purpose and watch ArgoCD catch the drift.
+このモジュールでは、ArgoCD を使用して本番運用可能なプロジェクト構成を Git からデプロイし、その後意図的に構成を崩して ArgoCD が乖離を検知する様子を確認します。
 
-=== Learning Objectives
+=== 学習目標（Learning Objectives）
 
-By the end of this module, you will be able to:
+このモジュールを完了すると、以下のことができるようになります：
 
-* Access and navigate the ArgoCD interface on OpenShift
-* Deploy a complete project configuration (namespace, quotas, limits, network policy) from Git
-* Understand how ArgoCD detects configuration drift
-* Resync resources to restore the desired state
-* Enable self-healing so ArgoCD automatically reverts unauthorized changes
+* OpenShift 上の ArgoCD インターフェースへのアクセスとナビゲーション
+* Git からの完全なプロジェクト構成（ネームスペース、クォータ、制限、ネットワークポリシー）のデプロイ
+* ArgoCD が構成の乖離を検出する仕組みの理解
+* リソースを再同期（Resync）して期待される状態を復元する
+* 自動修復（Self-healing）を有効にして、ArgoCD が未承認の変更を自動的に元に戻すようにする
 
 image::diagrams/06_gitops.png[ArgoCD GitOps Sync Flow, align=center, link=self, window=blank]
-=== How GitOps Works on OpenShift
+=== OpenShift 上での GitOps の仕組み（How GitOps Works on OpenShift）
 
-OpenShift GitOps uses link:https://argo-cd.readthedocs.io/en/stable/[ArgoCD, window=blank] to implement a continuous reconciliation loop:
+OpenShift GitOps は link:https://argo-cd.readthedocs.io/en/stable/[ArgoCD, window=blank] を使用して、継続的な調整ループ（Reconciliation loop）を実装しています：
 
-1. **Define** - store your desired cluster state as YAML manifests in a Git repository
-2. **Sync** - ArgoCD applies those manifests to the cluster
-3. **Detect** - ArgoCD continuously compares the live cluster state against Git
-4. **Reconcile** - if drift is detected, ArgoCD flags it as OutOfSync and can auto-heal
+1. **定義 (Define)** - 期待されるクラスターの状態を YAML マニフェストとして Git リポジトリに保持します
+2. **同期 (Sync)** - ArgoCD がそれらのマニフェストをクラスターに適用します
+3. **検出 (Detect)** - ArgoCD は実際のクラスター状態と Git を継続的に比較します
+4. **調整 (Reconcile)** - 乖離が検出された場合、ArgoCD はそれを OutOfSync と判定し、自動修復できます
 
-The result: Git becomes the single source of truth. Every change is tracked, auditable, and reversible.
+結果として、Git が「信頼できる唯一の情報源（Single Source of Truth）」となります。すべての変更が追跡可能であり、監査可能で、元に戻すことができます。
 
-For more details, see link:https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.19/html/understanding_openshift_gitops/index[Understanding OpenShift GitOps, window=blank].
+詳細については、link:https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.19/html/understanding_openshift_gitops/index[Understanding OpenShift GitOps, window=blank] を参照してください。
 
-== Deploy with ArgoCD
+== ArgoCD によるデプロイ（Deploy with ArgoCD）
 
-=== Step 1: Access ArgoCD
+=== ステップ 1: ArgoCD へのアクセス（Step 1: Access ArgoCD）
 
-OpenShift GitOps is already installed on your cluster. The ArgoCD instance is running in the `openshift-gitops` namespace.
+OpenShift GitOps は、お使いのクラスターにすでにインストールされています。ArgoCD インスタンスは `openshift-gitops` ネームスペースで稼働しています。
 
-Click the **ArgoCD** tab at the top of this workshop window.
+このワークショップウィンドウの上部にある **ArgoCD** タブをクリックします。
 
-If prompted about a certificate warning, proceed using the advanced options.
+証明書の警告が表示された場合は、詳細オプションを使用してそのまま進めてください。
 
-**Log in via OpenShift:**
+**OpenShift 経由でログイン：**
 
-Select **Log in via OpenShift**:
+**Log in via OpenShift** を選択します：
 
 image::gitops-argocd-login.png[ArgoCD login page with Log in via OpenShift button, link=self, window=blank]
-Enter your admin credentials:
+管理者認証情報を入力します：
 
-* *Username*: `{openshift_cluster_admin_username}`
-* *Password*: `{openshift_cluster_admin_password}`
+* *ユーザー名*: `{openshift_cluster_admin_username}`
+* *パスワード*: `{openshift_cluster_admin_password}`
 
 image::gitops-openshift-login.png[OpenShift login form, link=self, window=blank]
-Authorize access when prompted:
+アクセス許可を求められたら承認（Authorize）します：
 
 image::gitops-authorize-access.png[OAuth authorize access page, link=self, window=blank]
-NOTE: You can also open ArgoCD in a separate browser tab - look for the grid icon (nine tiles) in the OpenShift console navigation bar and select **Cluster Argo CD** under OpenShift GitOps.
+NOTE: 別のブラウザタブで ArgoCD を開くこともできます。OpenShift コンソールのナビゲーションバーにあるグリッドアイコン（9つのタイル）を探し、OpenShift GitOps の下にある **Cluster Argo CD** を選択してください。
 
-**Verify from the CLI:**
+**CLI から確認：**
 
 [source,bash,role="execute"]
 ----
 oc get pods -n openshift-gitops
 ----
 
-You should see the ArgoCD server, application controller, repo server, Redis, and Dex pods all running.
+ArgoCD サーバー、アプリケーションコントローラー、リポジトリサーバー、Redis、および Dex の各 Pod がすべて稼働しているはずです。
 
-=== Step 2: Deploy a Project Configuration from Git
+=== ステップ 2: Git からのプロジェクト構成のデプロイ（Step 2: Deploy a Project Configuration from Git）
 
-In production, platform teams define standard project configurations in Git - a namespace with resource quotas, default limits, and network policies. Every new team project gets the same baseline. Let's deploy one now.
+本番環境において、プラットフォームチームはリソースクォータ、デフォルト制限、およびネットワークポリシーを含む標準的なプロジェクト構成を Git 内で定義します。新しいチームプロジェクトにはすべて同じベースラインが提供されます。実際にこれをデプロイしてみましょう。
 
-The Git repository for this workshop contains a cluster configuration bundle at `support/gitops/cluster-config/` with four resources:
+このワークショップ用 Git リポジトリの `support/gitops/cluster-config/` には、4 つのリソースで構成されるクラスター構成バンドルが含まれています：
 
-* **Namespace** - `gitops-managed-project` with labels for tracking
-* **ResourceQuota** - caps total CPU, memory, and pod count for the project
-* **LimitRange** - sets default CPU/memory requests and limits for containers that don't specify their own
-* **NetworkPolicy** - denies ingress from other namespaces (project isolation)
+* **Namespace** - 追跡用ラベルを持つ `gitops-managed-project`
+* **ResourceQuota** - プロジェクトの総 CPU、メモリ、および Pod 数を制限します
+* **LimitRange** - 明示的に指定しないコンテナに対してデフォルトの CPU/メモリ要求と上限を設定します
+* **NetworkPolicy** - 他のネームスペースからのインバウンドアクセスを拒否します（プロジェクトの分離）
 
-This is the kind of baseline every production project should have.
+これは、すべての本番プロジェクトが保持すべきベースラインです。
 
-**First, create a workshop project in ArgoCD to keep our exercises separate:**
+**まず、演習を分離して管理するために、ArgoCD 内にワークショッププロジェクトを作成します：**
 
 [source,bash,role="execute"]
 ----
@@ -112,7 +112,7 @@ spec:
 EOF
 ----
 
-**Create the ArgoCD Application:**
+**ArgoCD アプリケーションの作成：**
 
 [source,bash,role="execute"]
 ----
@@ -133,58 +133,58 @@ spec:
 EOF
 ----
 
-**Sync the Application:**
+**アプリケーションの同期：**
 
-Switch to the ArgoCD UI. You will need to reload the **ArgoCD** tab to see the new application. You may see other applications on the dashboard - these are managed by the platform. To see only your workshop application, use the **PROJECTS** filter on the left sidebar and select **workshop**:
+ArgoCD UI に切り替えます。新しいアプリケーションを表示するには、**ArgoCD** タブを再読み込みする必要があります。ダッシュボードに他のアプリケーションが表示される場合がありますが、これらはプラットフォームによって管理されているものです。ご自身のワークショップアプリケーションのみを表示するには、左側のサイドバーにある **PROJECTS** フィルターを使用し、**workshop** を選択します：
 
 image::gitops-project-filter.png[ArgoCD PROJECTS filter dropdown showing default and workshop options, link=self, window=blank]
-You should now see only the `managed-project` application tile. It will show **OutOfSync** because ArgoCD has not applied the resources to the cluster yet.
+`managed-project` アプリケーションのタイルのみが表示されるはずです。ArgoCD がまだこれらのリソースをクラスターに適用していないため、**OutOfSync** と表示されます。
 
-Click on the tile, then click the **Sync** button in the top toolbar, then click **Synchronize** in the dialog that appears. ArgoCD will apply all four resources from Git to your cluster.
+タイルをクリックし、上部ツールバーの **Sync** ボタンをクリックしてから、表示されるダイアログで **Synchronize** をクリックします。ArgoCD は Git から 4 つのリソースすべてをお使いのクラスターに適用します。
 
-Once the sync completes, the application should show:
+同期が完了すると、アプリケーションには以下が表示されます：
 
 image::gitops-dashboard-synced.png[ArgoCD dashboard filtered by workshop project showing managed-project as Healthy and Synced, link=self, window=blank]
-* **Green heart** = Healthy
-* **Green circle with tick** = Synced
+* **緑色のハート** = Healthy
+* **チェックマーク付きの緑色の丸** = Synced
 
-**Explore the Application in ArgoCD**
+**ArgoCD でのアプリケーションの探索**
 
-Click on the `managed-project` tile to open the application detail view. You'll see a **resource tree** showing the relationship between all managed resources:
+`managed-project` タイルをクリックして、アプリケーションの詳細ビューを開きます。すべての管理対象リソース間の関係を示す**リソースツリー**が表示されます：
 
 image::gitops-resource-tree-synced.png[ArgoCD resource tree showing managed-project with four child resources all Synced, link=self, window=blank]
-* `managed-project` at the center
-* Branching out to: `default-limits` (LimitRange), `gitops-managed-project` (Namespace), `compute-quota` (ResourceQuota), `deny-from-other-namespaces` (NetworkPolicy)
+* 中央に `managed-project`
+* そこから以下に分岐: `default-limits` (LimitRange)、`gitops-managed-project` (Namespace)、`compute-quota` (ResourceQuota)、`deny-from-other-namespaces` (NetworkPolicy)
 
-Each resource node shows its sync and health status with color-coded icons. Click on any resource - for example, the **compute-quota** ResourceQuota - to open a detail panel:
+各リソースノードには、色分けされたアイコンで同期とヘルスのステータスが表示されます。いずれかのリソース（例: **compute-quota** ResourceQuota）をクリックすると、詳細パネルが開きます：
 
 image::gitops-quota-detail.png[ArgoCD detail panel for compute-quota showing Summary and Live Manifest tabs, link=self, window=blank]
-This panel shows:
+このパネルには以下が表示されます：
 
-* **Summary** - kind, namespace, creation time, sync status
-* **Live Manifest** - the current state on the cluster
-* **Desired Manifest** - what's defined in Git
-* **Diff** - any differences between live and desired
-* **Events** - sync events and status changes
+* **Summary** - 種別（kind）、ネームスペース、作成日時、同期ステータス
+* **Live Manifest** - クラスター上の現在の状態
+* **Desired Manifest** - Git 内で定義されている状態
+* **Diff** - Live と Desired の間の差分
+* **Events** - 同期イベントとステータス変更履歴
 
-This is where you'll spend most of your time as an admin - checking that resources match their desired state and investigating when they don't.
+これは管理者が最も多くの時間を費やす場所です。リソースが期待される状態と一致しているか確認し、一致していない場合に調査を行います。
 
-Click the **X** in the top-right corner to return to the `managed-project` application overview.
+右上隅の **X** をクリックして、`managed-project` アプリケーションの概要に戻ります。
 
-**Explore the Application Details**
+**アプリケーションの詳細情報の探索**
 
-Click the **Details** button in the top toolbar. This shows the application configuration:
+上部ツールバーの **Details** ボタンをクリックします。これによりアプリケーションの設定が表示されます：
 
 image::gitops-app-details.png[ArgoCD App Details showing project workshop, repo URL, path, and sync status, link=self, window=blank]
-* **Project** - `workshop` (our filtered workspace)
-* **Repo URL** - the Git repository ArgoCD is watching
-* **Path** - `support/gitops/cluster-config/` within that repo
-* **Target Revision** - `main` branch
-* **Status** - Synced to a specific commit
+* **Project** - `workshop`（フィルターされたワークスペース）
+* **Repo URL** - ArgoCD が監視している Git リポジトリ
+* **Path** - リポジトリ内の `support/gitops/cluster-config/`
+* **Target Revision** - `main` ブランチ
+* **Status** - 特定のコミットに同期済み
 
-Close the panel when done.
+完了したらパネルを閉じます。
 
-**Verify from the CLI:**
+**CLI からの確認：**
 
 [source,bash,role="execute"]
 ----
@@ -206,17 +206,17 @@ oc get limitrange -n gitops-managed-project
 oc get networkpolicy -n gitops-managed-project
 ----
 
-All four resources were deployed from a single Git path. On a fleet of 10 clusters, you would point each cluster's ArgoCD at the same repository and every cluster would get this identical configuration automatically.
+4 つのリソースすべてが単一の Git パスからデプロイされました。10 台のクラスターフリートであれば、各クラスターの ArgoCD で同じリポジトリを指定するだけで、すべてのクラスターがこの同一の設定を自動的に取得できます。
 
-TIP: In the OpenShift console, navigate to **Home -> Projects** and select `gitops-managed-project`. You can see the ResourceQuota under the **Overview** tab.
+TIP: OpenShift コンソールで **Home -> Projects** に移動し、`gitops-managed-project` を選択します。**Overview** タブで ResourceQuota を確認できます。
 
-== Drift Detection & Self-Healing
+== 構成の乖離検出と自動修復（Drift Detection & Self-Healing）
 
-=== Step 3: Simulate Configuration Drift
+=== ステップ 3: 構成の乖離のシミュレート（Step 3: Simulate Configuration Drift）
 
-Now let's see what happens when someone makes an unauthorized manual change - the kind of thing that happens in production when someone "just needs to fix something quickly."
+次に、誰かが未承認の手動変更を行った場合（本番環境で「急ぎでちょっと修正したい」ときなどに発生しがちな事象）に何が起こるかを確認します。
 
-**Increase the pod quota manually:**
+**Pod クォータを手動で増やしてみます：**
 
 [source,bash,role="execute"]
 ----
@@ -224,7 +224,7 @@ oc patch resourcequota compute-quota -n gitops-managed-project \
   -p '{"spec":{"hard":{"pods":"100"}}}' --type=merge
 ----
 
-This changes the pod limit from 20 (what's in Git) to 100. Verify the change:
+これにより、Pod の制限が 20（Git にある設定）から 100 に変更されます。変更を確認します：
 
 [source,bash,role="execute"]
 ----
@@ -232,43 +232,43 @@ oc get resourcequota compute-quota -n gitops-managed-project -o jsonpath='{.spec
 echo
 ----
 
-Output: `100` - the manual change took effect.
+出力: `100` - 手動での変更が反映されました。
 
-**Check ArgoCD:**
+**ArgoCD の確認：**
 
-Go back to the ArgoCD UI. The `managed-project` application now shows **OutOfSync**. ArgoCD detected that the live cluster state no longer matches what's defined in Git.
+ArgoCD UI に戻ります。`managed-project` アプリケーションは **OutOfSync** と表示されています。ArgoCD は実際のクラスター状態が Git 内の定義と一致しなくなったことを検出しました。
 
-Click the tile to open the application. In the resource tree, **compute-quota** is highlighted in yellow - that's the resource that drifted:
+タイルをクリックしてアプリケーションを開きます。リソースツリーでは、**compute-quota** が黄色でハイライトされています。これが乖離を発生させたリソースです：
 
 image::gitops-resource-tree-outofsync.png[ArgoCD resource tree showing OutOfSync status with compute-quota highlighted, link=self, window=blank]
-**View the diff:**
+**差分（Diff）の表示：**
 
-Click on the `compute-quota` ResourceQuota in the resource tree. In the detail panel, click the **Diff** tab:
+リソースツリー内の `compute-quota` ResourceQuota をクリックします。詳細パネルで **Diff** タブをクリックします：
 
 image::gitops-quota-outofsync.png[compute-quota detail showing OutOfSync status, link=self, window=blank]
-You'll see a side-by-side comparison showing the exact difference:
+正確な違いを示す並列比較が表示されます：
 
 image::gitops-diff-view.png[ArgoCD diff view showing pods 100 on the left vs pods 20 on the right, link=self, window=blank]
-* The live cluster has `pods: "100"` - the manual change
-* The desired state from Git has `pods: "20"` - what it should be
+* 実際のクラスター（Live）は `pods: "100"` - 手動による変更
+* Git からの期待される状態（Desired）は `pods: "20"` - あるべき状態
 
-Notice that ArgoCD only flags the specific field that changed. The Namespace, LimitRange, and NetworkPolicy all show as Synced because they weren't touched.
+ArgoCD は変更された特定のフィールドのみをフラグ立てすることに注目してください。Namespace、LimitRange、および NetworkPolicy は変更されていないため、すべて Synced と表示されています。
 
-This is the power of GitOps for operations teams - across hundreds of resources, you can immediately pinpoint exactly what deviated from the baseline and when.
+これこそが運用チームにとっての GitOps の強みです。何百ものリソースにわたって、何がベースラインから逸脱したのか、そしてそれがいつ起こったのかを即座に特定できます。
 
-=== Step 4: Restore the Desired State
+=== ステップ 4: 期待される状態の復元（Step 4: Restore the Desired State）
 
-**Resync from Git:**
+**Git から再同期：**
 
-In the ArgoCD application view, click the **Sync** button in the top toolbar, then click **Synchronize** in the dialog that appears:
+ArgoCD アプリケーションビューで、上部ツールバーの **Sync** ボタンをクリックし、表示されたダイアログで **Synchronize** をクリックします：
 
 image::gitops-sync-dialog.png[ArgoCD sync dialog showing all four resources checked for synchronization, link=self, window=blank]
-You can leave all defaults - ArgoCD will apply every resource from Git.
+デフォルトのままで進めて構いません。ArgoCD は Git からすべてのリソースを適用します。
 
-Watch the resource tree - the ResourceQuota node will flash as it updates, then return to green (Synced):
+リソースツリーを観察します。ResourceQuota ノードが更新中に点滅し、その後緑色（Synced）に戻ります：
 
 image::gitops-resynced.png[ArgoCD resource tree back to all Synced after resync, link=self, window=blank]
-**Verify the fix:**
+**修正の検証：**
 
 [source,bash,role="execute"]
 ----
@@ -276,13 +276,13 @@ oc get resourcequota compute-quota -n gitops-managed-project -o jsonpath='{.spec
 echo
 ----
 
-Output: `20` - the pod quota is back to the value defined in Git. The unauthorized change has been reverted.
+出力: `20` - Pod クォータが Git で定義された値に戻りました。未承認の変更が取り消されました。
 
-=== Step 5: Enable Self-Healing
+=== ステップ 5: 自動修復の有効化（Step 5: Enable Self-Healing）
 
-In the previous step, you had to manually resync. In production, you want ArgoCD to automatically revert drift without human intervention.
+前のステップでは、手動で再同期を行う必要がありました。本番環境では、人間の介入なしに ArgoCD が自動的に乖離を取り消すように設定することが望ましいです。
 
-**Enable self-heal on the application:**
+**アプリケーションで自動修復（self-heal）を有効化：**
 
 [source,bash,role="execute"]
 ----
@@ -290,7 +290,7 @@ oc patch application.argoproj.io managed-project -n openshift-gitops \
   --type=merge -p '{"spec":{"syncPolicy":{"automated":{"selfHeal":true,"prune":false}}}}'
 ----
 
-**Test it - make another manual change:**
+**テスト - 再び手動変更を行ってみます：**
 
 [source,bash,role="execute"]
 ----
@@ -298,7 +298,7 @@ oc patch resourcequota compute-quota -n gitops-managed-project \
   -p '{"spec":{"hard":{"pods":"999"}}}' --type=merge
 ----
 
-**Wait a few seconds, then check:**
+**数秒待ってから確認します：**
 
 [source,bash,role="execute"]
 ----
@@ -307,46 +307,46 @@ oc get resourcequota compute-quota -n gitops-managed-project -o jsonpath='{.spec
 echo
 ----
 
-Output: `20` - ArgoCD automatically detected the drift and reverted it without any manual intervention.
+出力: `20` - ArgoCD は自動的に乖離を検出し、手動での介在なしに復元しました。
 
-**Check the ArgoCD UI:**
+**ArgoCD UI の確認：**
 
-Go back to the ArgoCD dashboard. The `managed-project` application still shows **Synced** and **Healthy** - it briefly went OutOfSync when you made the change, then ArgoCD immediately corrected it:
+ArgoCD ダッシュボードに戻ります。`managed-project` アプリケーションは依然として **Synced** および **Healthy** と表示されます。変更を行った際に一時的に OutOfSync になりましたが、ArgoCD が即座に修正しました：
 
 image::gitops-selfheal-synced.png[ArgoCD dashboard showing managed-project still Synced after self-heal, link=self, window=blank]
-Click into the application and check the **Last Sync** timestamp - it will show a recent sync that was triggered by self-heal, not by you.
+アプリケーション内をクリックし、**Last Sync** のタイムスタンプを確認します。自分自身が行ったものではなく、自動修復によってトリガーされた最近の同期が表示されます。
 
-You can also click on `managed-project` at the top of the resource tree and look at the **Events** tab to see the sync history - you'll see ArgoCD detected the drift and automatically resynced.
+また、リソースツリー上部の `managed-project` をクリックして **Events** タブを選択すると、同期履歴を確認できます。ArgoCD が乖離を検知し、自動的に再同期したことがわかります。
 
 image::gitops-events-sync-history.png[ArgoCD Events tab showing drift detection and automatic resync, link=self, window=blank]
-This is how production clusters stay compliant. No matter what manual changes someone makes, ArgoCD continuously enforces the configuration defined in Git.
+これが本番クラスターがコンプライアンスを維持する仕組みです。誰かがどのような手動変更を行ったとしても、ArgoCD は Git 内で定義された構成を継続的に強制適用します。
 
-== When to Use GitOps
+== GitOps を使用すべきタイミング（When to Use GitOps）
 
-GitOps is most valuable for:
+GitOps は以下の場合に最も価値を発揮します：
 
-* **Multi-cluster consistency** - same configuration across dev, staging, production, and edge clusters
-* **Compliance and auditing** - every change is a Git commit with author, timestamp, and approval
-* **Disaster recovery** - rebuild a cluster's entire configuration by pointing ArgoCD at the Git repo
-* **Preventing configuration drift** - self-heal ensures manual changes don't persist
+* **マルチクラスター間の一貫性** - 開発、ステージング、本番、およびエッジクラスター間で同じ構成を維持する
+* **コンプライアンスと監査** - すべての変更が、作成者、タイムスタンプ、および承認情報を持つ Git コミットとなる
+* **障害復旧 (DR)** - ArgoCD で Git リポジトリを指定するだけでクラスター全体の構成を再構築できる
+* **構成乖離の防止** - 自動修復により手動変更が永続化するのを防ぐ
 
-For more information, see link:https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.19/html/understanding_openshift_gitops/index[Understanding OpenShift GitOps, window=blank].
+詳細については、link:https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.19/html/understanding_openshift_gitops/index[Understanding OpenShift GitOps, window=blank] を参照してください。
 
-== Cleanup & Summary
+== クリーンアップとまとめ（Cleanup & Summary）
 
-=== Summary
+=== まとめ（Summary）
 
-**What you accomplished:**
+**達成したこと：**
 
-* Accessed the pre-deployed ArgoCD instance via the OpenShift console
-* Deployed a complete project configuration (namespace, quotas, limits, network policy) from a Git repository
-* Observed ArgoCD detect configuration drift when a ResourceQuota was manually changed
-* Resynced to restore the desired state from Git
-* Enabled self-healing so ArgoCD automatically reverts unauthorized changes
+* OpenShift コンソール経由で事前にデプロイされた ArgoCD インスタンスにアクセスした
+* Git リポジトリから完全なプロジェクト構成（ネームスペース、クォータ、制限、ネットワークポリシー）をデプロイした
+* ResourceQuota が手動で変更された際に ArgoCD が構成の乖離を検出するのを確認した
+* Git から期待される状態を復元するために再同期した
+* 自動修復を有効化し、ArgoCD が未承認の変更を自動的に取り消すようにした
 
-**Key takeaway:** GitOps turns cluster configuration into code. Everything is in Git - tracked, auditable, and automatically enforced. If it's not in Git, it shouldn't be on the cluster.
+**重要なポイント:** GitOps はクラスター構成をコードに変換します。すべてが Git 上に存在し、追跡可能で、監査可能で、自動的に適用されます。Git 内に存在しないものは、クラスター上にあるべきではありません。
 
-=== Cleanup
+=== クリーンアップ（Cleanup）
 
 [source,bash,role="execute"]
 ----
