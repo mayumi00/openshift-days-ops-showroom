@@ -1,8 +1,8 @@
 = Thank You for Completing the Workshop
 
-**Thank you for attending the OpenShift Ops Day Roadshow.**
+**OpenShift Ops Day Roadshow にご参加いただき、ありがとうございました。**
 
-We hope you found the hands-on exercises valuable. If you have any further questions, please ask your instructor.
+ハンズオン演習が皆様のお役に立ちましたら幸いです。ご質問がございましたら、インストラクターにお尋ねください。
 
 == Additional Resources
 
