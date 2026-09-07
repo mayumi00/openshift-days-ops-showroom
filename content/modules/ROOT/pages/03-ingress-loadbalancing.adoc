@@ -1,4 +1,4 @@
-= Ingress とロードバランシング（Ingress & Load Balancing）
+= Ingress とロードバランシング
 :page-toclevels: 1
 
 **所要時間:** 25 分 +
@@ -6,16 +6,16 @@
 
 include::partial$console-access.adoc[]
 
-== シナリオ（The Scenario）
+== シナリオ
 
 アプリケーションがデプロイされ、稼働しています。しかし、外部からのトラフィックはどのようにして実際に届くのでしょうか？このモジュールでは、Ingress Controller を調査し、TLS を使用した Route（ルート）を作成した上で、負荷時のレート制限、HTTP から HTTPS への強制リダイレクト、セキュリティヘッダーなどを用いて保護を行います。テスト前後の挙動を検証することで、各設定が正しく機能していることを証明します。
 
 image::diagrams/03_ingress.png[OpenShift Ingress Load Balancer Flow, align=center, link=self, window=blank]
-== Ingress Controller とロードバランシング（Ingress Controller & Load Balancing）
+== Ingress Controller とロードバランシング
 
 **Ingress Controller**（デフォルトは HAProxy。他の Ingress Controller も使用可能）は、クラスターに入る HTTP/S トラフィックを処理できます。
 
-=== Ingress Controller 設定の表示（View Ingress Controller Configuration）
+=== Ingress Controller 設定の表示
 
 [source,bash,role="execute"]
 ----
@@ -29,7 +29,7 @@ oc get ingresscontroller default -n openshift-ingress-operator -o yaml | head -6
 * `defaultCertificate` - *.apps ドメイン用の TLS 証明書
 * `endpointPublishingStrategy` - ルーターの公開方法（HostNetwork、LoadBalancer、NodePort）
 
-=== ルーター Pod の表示（View Router Pods）
+=== ルーター Pod の表示
 
 [source,bash,role="execute"]
 ----
@@ -41,18 +41,18 @@ oc get pods -n openshift-ingress -o wide
 **OCP Console** の **Workloads -> Pods** でもこれらを確認できます。プロジェクトドロップダウンで **Show default projects**（デフォルトプロジェクトの表示）を有効にし、`openshift-ingress` を選択します：
 
 image::ingress-images/ingress-router-pods.png[Router pods in the openshift-ingress namespace, link=self, window=blank]
-=== Endpoint Publishing Strategy の確認（Check Endpoint Publishing Strategy）
+=== Endpoint Publishing Strategy の確認
 
 [source,bash,role="execute"]
 ----
 oc get ingresscontroller default -n openshift-ingress-operator -o jsonpath='{.status.endpointPublishingStrategy}' | jq . 2>/dev/null || oc get ingresscontroller default -n openshift-ingress-operator -o jsonpath='{.status.endpointPublishingStrategy}' | python3 -m json.tool
 ----
 
-== Routes: OpenShift の Ingress リソース（Routes: OpenShift's Ingress Resource）
+== Routes: OpenShift の Ingress リソース
 
 OpenShift の **Routes** は、サービスを外部に公開します。Kubernetes の Ingress よりも機能が豊富です。
 
-=== アプリケーションのセットアップ（Set Up the Application）
+=== アプリケーションのセットアップ
 
 このセクションではテストアプリケーションを使用します。以下を実行して、プロジェクトとアプリの準備が整っていることを確認します：
 
@@ -85,7 +85,7 @@ image::ingress-images/ingress-weathernow-route.png[test-app route in the console
 Route 名をクリックすると、TLS 設定やルーター情報などの完全な詳細が表示されます：
 
 image::ingress-images/ingress-route-details.png[test-app route details showing TLS edge termination, link=self, window=blank]
-=== Route 設定の表示（View the Route Configuration）
+=== Route 設定の表示
 
 [source,bash,role="execute"]
 ----
@@ -98,7 +98,7 @@ oc get route test-app -o yaml
 * `spec.to.name` - バックエンドの Service
 * `spec.tls.termination` - TLS 終端タイプ（この場合は edge）
 
-=== Route のテスト（Test the Route）
+=== Route のテスト
 
 HTTPS（edge TLS）でテストします：
 
@@ -111,7 +111,7 @@ curl -sk https://$(oc get route test-app -o jsonpath='{.spec.host}') | head -5
 
 Web サーバーから返された HTML（デフォルトのテストページ）が表示されるはずです。
 
-== TLS 終端戦略（TLS Termination Strategies）
+== TLS 終端戦略
 
 OpenShift Routes は、3 つの TLS 終端タイプをサポートしています：
 
@@ -132,7 +132,7 @@ OpenShift Routes は、3 つの TLS 終端タイプをサポートしていま�
 |ルーター証明書の検証を伴うエンドツーエンド暗号化
 |===
 
-=== TLS 設定の検査（Examine TLS Configuration）
+=== TLS 設定の検査
 
 Edge Route の TLS 設定を表示します：
 
@@ -147,7 +147,7 @@ Edge 終端の意味：
 * ルーターから Pod へのトラフィックは暗号化されていない HTTP になる
 * ルーターはクラスターのワイルドカード証明書を使用する
 
-=== クラスター全体の Route の表示（View Routes Across Cluster）
+=== クラスター全体の Route の表示
 
 [source,bash,role="execute"]
 ----
@@ -159,9 +159,9 @@ oc get routes -A | head -20
 **OCP Console** で **Networking -> Routes** に移動し（**All Projects** を選択）、クラスター全体のすべての Route を表示します：
 
 image::ingress-images/ingress-routes-all.png[All routes across the cluster with TLS termination badges, link=self, window=blank]
-== 高度な設定（Advanced Configuration）
+== 高度な設定
 
-=== Route の保護（Protect Your Routes）
+=== Route の保護
 
 Route は、レート制限、セキュリティヘッダー、および HTTP 動作を制御するアノテーションをサポートしています。これらを適用し、正しく動作することを証明しましょう。
 
@@ -286,7 +286,7 @@ NOTE: 出力がハングした場合は、**Ctrl+C** を押してプロンプト
 
 すべて `403` になります。すべてのリクエストがアプリに到達します（httpd のデフォルトページは 403 を返しますが、これは想定どおりです）。`000` レスポンスがないことは、接続がドロップされなかったことを意味します。HAProxy が積極的に接続をドロップしていた前のテストと比較してください。これが 1 つのアノテーションによる違いです。
 
-=== Ingress Controller のスケーリング（Ingress Controller Scaling）
+=== Ingress Controller のスケーリング
 
 Ingress Controller は、IngressController CR の `spec.replicas` を変更することでスケーリングできます。レプリカを追加すると、外部 Ingress ロードバランサーの背後に配置されるルーターが増え、スループットが向上します。
 
@@ -310,7 +310,7 @@ oc patch ingresscontroller default -n openshift-ingress-operator --type=merge -p
 コンソールの **Administration -> Cluster Settings -> ClusterOperators** で Ingress Controller の健全性を確認し、**ingress** をクリックします：
 
 image::ingress-images/ingress-operator-conditions.png[Ingress operator conditions showing Available, Progressing, Degraded status, link=self, window=blank]
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
 [source,bash,role="execute"]
 ----
@@ -325,7 +325,7 @@ oc patch route test-app -n ingress-demo --type=merge \
 echo "Cleanup complete"
 ----
 
-=== まとめ（Summary）
+=== まとめ
 
 **学んだこと：**
 
