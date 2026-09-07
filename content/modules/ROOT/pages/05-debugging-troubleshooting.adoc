@@ -1,156 +1,156 @@
-= Debugging & Troubleshooting
+= デバッグとトラブルシューティング（Debugging & Troubleshooting）
 :page-toclevels: 1
 
-== Getting Started
+== はじめに（Getting Started）
 
-=== Module Overview
+=== モジュールの概要（Module Overview）
 
-**Duration:** 10-15 minutes +
-**Format:** Hands-on Lab - Real Problem Solving +
-**Audience:** IT Operations, SRE, Platform Engineers
+**所要時間:** 10〜15 分 +
+**形式:** ハンズオンラボ - リアルな問題解決 +
+**対象者:** IT運用担当者、SRE、プラットフォームエンジニア
 
 include::partial$console-access.adoc[]
 
-Your cluster is running a weather application made up of several microservices. Some of them have just broken. Your job is to diagnose and fix each one - these are the same kinds of issues that generate real support tickets.
+お使いのクラスターでは、複数のマイクロサービスで構成されたお天気アプリケーションが稼働しています。しかし、そのうちのいくつかが故障してしまいました。あなたの仕事は、それぞれの問題を診断して修正することです。これらは、実際のサポートチケットで発生するような問題と同じ種類のリソース障害です。
 
-=== Learning Objectives
+=== 学習目標（Learning Objectives）
 
-By the end of this module, you will be able to:
+このモジュールを完了すると、以下のことができるようになります：
 
-* Read pod events and logs to identify root causes
-* Fix ImagePullBackOff, CrashLoopBackOff, ConfigMap errors, resource constraint violations, service routing issues, and SCC permission failures
-* Use the Observe → Diagnose → Fix → Verify workflow
+* Pod のイベントとログを読み取り、根本原因を特定する
+* ImagePullBackOff、CrashLoopBackOff、ConfigMap エラー、リソース制限の違反、Service ルーティングの問題、および SCC パーミッションの失敗を修正する
+* 「観察 (Observe) → 診断 (Diagnose) → 修正 (Fix) → 検証 (Verify)」のワークフローを活用する
 
-=== Your Diagnostic Toolkit
+=== 診断ツールキット（Your Diagnostic Toolkit）
 
-These are the commands you'll use constantly:
+これらは常に使用することになるコマンドです：
 
 [source,bash,role="copypaste"]
 ----
-# What's broken?
+# 何が壊れているか？
 oc get pods -n <namespace>
 
-# Why is it broken?
+# なぜ壊れているのか？
 oc describe pod <pod-name> -n <namespace>
 
-# What did the app say before it died?
+# アプリが終了する前に何を出力したか？
 oc logs <pod-name> -n <namespace>
 oc logs <pod-name> -n <namespace> --previous
 
-# Check deployment events (for pods that never got created)
+# Deployment のイベントを確認する（作成すらされなかった Pod 向け）
 oc describe deployment <deployment-name> -n <namespace>
 ----
 
-== Deploy the Broken Applications
+== 故障したアプリケーションのデプロイ（Deploy the Broken Applications）
 
-First, create the namespace and deploy the intentionally broken applications:
+まず、ネームスペースを作成し、意図的に破壊されたアプリケーションをデプロイします：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/05-debugging/deploy-broken-apps.sh)
 ----
 
-=== See What's Broken
+=== 故障内容の確認（See What's Broken）
 
-Six microservices have been deployed with intentional misconfigurations. Let's triage the damage.
+意図的な誤設定を含む 6 つのマイクロサービスがデプロイされました。損害を仕分け（トリアージ）してみましょう。
 
-Switch to the **OCP Console** tab and navigate to **Workloads -> Pods** (select project `debug-lab` from the dropdown). You'll immediately see which pods have issues - error states like `CrashLoopBackOff` and `ImagePullBackOff` are flagged with a red exclamation mark:
+**OCP Console** タブに切り替え、**Workloads -> Pods** に移動します（ドロップダウンからプロジェクト `debug-lab` を選択）。どの Pod に問題があるかがすぐにわかります。`CrashLoopBackOff` や `ImagePullBackOff` などのエラー状態には赤の感嘆符フラグが付いています：
 
 image::broken-pods-triage.png[Pod list showing multiple failure states - ImagePullBackOff CrashLoopBackOff and CreateContainerConfigError, link=self, window=blank]
-* `weather-frontend` - `ImagePullBackOff` (red indicator)
-* `weather-api` - `CrashLoopBackOff` (red indicator)
+* `weather-frontend` - `ImagePullBackOff`（赤色インジケーター）
+* `weather-api` - `CrashLoopBackOff`（赤色インジケーター）
 * `weather-backend` - `CreateContainerConfigError`
-* `weather-proxy` - `Running` (but has a hidden issue)
-* `weather-cache` - doesn't appear at all
+* `weather-proxy` - `Running`（ただし非表示の潜在的障害あり）
+* `weather-cache` - リストに一切表示されない
 
-This is how real incident triage works - visual scanning of pod status to quickly identify what needs attention.
+これが実際のインシデントにおけるトリアージの手法です。Pod ステータスを目視でスキャンし、対応が必要な箇所を迅速に特定します。
 
-You can also verify via CLI:
+CLI 経由でも確認できます：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n debug-lab
 ----
 
-NOTE: You might notice `weather-cache` is missing from the pod list - that's one of the problems to investigate. Also, `weather-proxy` shows Running but has its own issue.
+NOTE: Pod リストに `weather-cache` が存在しないことに気づくかもしれません。これは調査すべき問題の 1 つです。また、`weather-proxy` は Running と表示されていますが、独自の問題を抱えています。
 
-**Your mission:** Fix all six.
+**あなたのミッション:** 6 つすべてを修正すること。
 
-== Fix the Problems
+== 障害の修正（Fix the Problems）
 
-=== Problem 1: ImagePullBackOff (weather-frontend)
+=== 問題 1: ImagePullBackOff (weather-frontend)
 
-**Diagnose**
+**診断 (Diagnose)**
 
-In the **OCP Console**, navigate to **Workloads -> Pods** (project: `debug-lab`) and click on the `weather-frontend` pod. Click the **Events** tab at the top to see the error with color-coded severity - you'll see the image pull failure immediately.
+**OCP Console** で **Workloads -> Pods**（プロジェクト: `debug-lab`）に移動し、`weather-frontend` Pod をクリックします。上部の **Events**（イベント）タブをクリックすると、色分けされた重大度とともにエラーが表示されます。イメージのプル失敗が即座に確認できます。
 
 image::debugging-frontend-events.png[weather-frontend pod Events tab showing ImagePullBackOff error, link=self, window=blank]
-You can also check via CLI:
+CLI 経由でも確認できます：
 
 [source,bash,role="execute"]
 ----
 oc describe pod -l app=weather-frontend -n debug-lab | tail -10
 ----
 
-Look at the **Events** section. You should see errors like:
+**Events** セクションを確認します。以下のようなエラーが表示されるはずです：
 
 ----
 Warning  Failed   Failed to pull image "quay.io/openshift-workshop-applications/weather-debug-app:9.9": ... manifest unknown
 Warning  Failed   Error: ImagePullBackOff
 ----
 
-The image tag `9.9` doesn't exist - the registry can't find it. Let's confirm the image reference:
+イメージタグ `9.9` が存在しないため、レジストリで見つけることができません。イメージの参照先を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get deployment weather-frontend -n debug-lab -o jsonpath='{.spec.template.spec.containers[0].image}'
 ----
 
-**Fix**
+**修正 (Fix)**
 
-Update the image to the correct tag (`latest`):
+イメージを正しいタグ（`latest`）に更新します：
 
 [source,bash,role="execute"]
 ----
 oc set image deployment/weather-frontend weather-frontend=quay.io/openshift-workshop-applications/weather-debug-app:latest -n debug-lab
 ----
 
-**Verify**
+**検証 (Verify)**
 
 [source,bash,role="execute"]
 ----
 oc get pods -l app=weather-frontend -n debug-lab
 ----
 
-You should see `1/1 Running`.
+`1/1 Running` と表示されるはずです。
 
-**Takeaway:** ImagePullBackOff = wrong image name, missing tag, or no pull credentials. Always check `oc describe pod` → Events.
+**まとめ:** ImagePullBackOff = 誤ったイメージ名、存在しないタグ、またはプル認証情報の欠落。常に `oc describe pod` → Events を確認します。
 
-=== Problem 2: CrashLoopBackOff (weather-api)
+=== 問題 2: CrashLoopBackOff (weather-api)
 
-**Diagnose**
+**診断 (Diagnose)**
 
-The pod keeps starting and crashing. In the **OCP Console**, navigate to **Workloads -> Pods** (project: `debug-lab`) and click the `weather-api` pod, then the **Logs** tab. The log viewer shows the error message with real-time streaming. If the pod has restarted, use the container dropdown on the left (highlighted in red below) to select the previous container's logs.
+Pod が起動とクラッシュを繰り返しています。**OCP Console** で **Workloads -> Pods**（プロジェクト: `debug-lab`）に移動し、`weather-api` Pod をクリックしてから **Logs**（ログ）タブをクリックします。ログビューアには、リアルタイムストリーミングでエラーメッセージが表示されます。Pod がすでに再起動している場合は、左側のコンテナドロップダウン（下記で赤くハイライトされている部分）を使用して、以前のコンテナのログを選択します。
 
 image::debugging-api-logs.png[weather-api pod Logs tab showing missing config file error, link=self, window=blank]
-You can also check via CLI:
+CLI 経由でも確認できます：
 
 [source,bash,role="execute"]
 ----
 oc logs deployment/weather-api -n debug-lab
 ----
 
-You should see:
+以下が表示されるはずです：
 
 ----
 Error: Missing required config file /etc/weather/config.yaml
 ----
 
-The app is trying to read a config file that doesn't exist.
+アプリが存在しない設定ファイルを読み込もうとしています。
 
-**Fix**
+**修正 (Fix)**
 
-Create the missing config file as a ConfigMap and mount it into the container. We'll also fix the container command to run the actual application:
+不足している設定ファイルを ConfigMap として作成し、コンテナ内にマウントします。また、実際のアプリケーションを実行できるようにコンテナコマンドを修正します：
 
 [source,bash,role="execute"]
 ----
@@ -166,48 +166,48 @@ oc patch deployment weather-api -n debug-lab --type=json -p='[
 ]'
 ----
 
-**Verify**
+**検証 (Verify)**
 
 [source,bash,role="execute"]
 ----
 oc get pods -l app=weather-api -n debug-lab
 ----
 
-You should see `1/1 Running`.
+`1/1 Running` と表示されるはずです。
 
-**Takeaway:** CrashLoopBackOff = the app starts then exits. Always check `oc logs` and `oc logs --previous`. Common causes: missing config, bad command, failed health checks, out of memory.
+**まとめ:** CrashLoopBackOff = アプリが起動直後に終了する。常に `oc logs` および `oc logs --previous` を確認します。主な原因: 設定の不足、誤ったコマンド、ヘルスチェック失敗、メモリ不足（OOM）。
 
-=== Problem 3: Resource Constraint Violation (weather-cache)
+=== 問題 3: リソース制限違反 (weather-cache)
 
-**Diagnose**
+**診断 (Diagnose)**
 
-You may have noticed `weather-cache` doesn't appear in the pod list at all. In the **OCP Console**, navigate to **Workloads → Deployments** (project: `debug-lab`). You'll see `weather-cache` showing `0 of 1 pods` - the deployment exists but no pod was created:
+`weather-cache` が Pod リストにまったく表示されていないことに気づいたかもしれません。**OCP Console** で **Workloads → Deployments**（プロジェクト: `debug-lab`）に移動します。`weather-cache` が `0 of 1 pods` と表示されているのがわかります。Deployment は存在しますが、Pod が 1 つも作成されていません：
 
 image::debugging-deployments.png[Deployments view showing weather-cache with 0 of 1 pods, link=self, window=blank]
-Click `weather-cache`, then the **ReplicaSets** tab, then click the ReplicaSet name (`weather-cache-xxxxxxx`). The **Events** tab shows the `FailedCreate` errors explaining why no pod was created.
+`weather-cache` をクリックし、**ReplicaSets** タブをクリックしてから、ReplicaSet 名（`weather-cache-xxxxxxx`）をクリックします。**Events** タブには、Pod が作成されなかった理由を示す `FailedCreate` エラーが表示されています。
 
 image::debugging-cache-deployment-events.png[weather-cache ReplicaSet Events showing FailedCreate due to LimitRange violation, link=self, window=blank]
-Let's also check via CLI:
+CLI 経由でも確認してみましょう：
 
 [source,bash,role="execute"]
 ----
 oc get deployment weather-cache -n debug-lab
 ----
 
-It shows `0/1` ready - the pod was never created. When a pod can't even be created, check the **ReplicaSet** events:
+`0/1` ready と表示され、Pod が作成されていないことがわかります。Pod がまったく作成できない場合は、**ReplicaSet** のイベントを確認します：
 
 [source,bash,role="execute"]
 ----
 oc describe replicaset -l app=weather-cache -n debug-lab | tail -5
 ----
 
-You should see:
+以下が表示されるはずです：
 
 ----
 Warning  FailedCreate  ...  maximum memory usage per Container is 2Gi, but limit is 1Ti
 ----
 
-A `LimitRange` in the namespace caps containers at 2Gi memory, but the deployment requests `512Gi` (a typo - should be `512Mi`). Let's confirm:
+ネームスペース内の `LimitRange` により、コンテナのメモリ上限が 2Gi に制限されていますが、Deployment は `512Gi` を要求しています（タイポであり、正しくは `512Mi` であるべきです）。確認してみましょう：
 
 [source,bash,role="execute"]
 ----
@@ -219,51 +219,51 @@ oc get deployment weather-cache -n debug-lab -o jsonpath='{.spec.template.spec.c
 oc get limitrange -n debug-lab -o yaml | grep -A4 "max:"
 ----
 
-**Fix**
+**修正 (Fix)**
 
-Fix the memory typo - change `512Gi` to `512Mi` and `1Ti` to `1Gi`:
+メモリのタイポを修正します。`512Gi` を `512Mi` に、`1Ti` を `1Gi` に変更します：
 
 [source,bash,role="execute"]
 ----
 oc set resources deployment/weather-cache -n debug-lab --requests=cpu=100m,memory=512Mi --limits=cpu=500m,memory=1Gi
 ----
 
-**Verify**
+**検証 (Verify)**
 
 [source,bash,role="execute"]
 ----
 oc get pods -l app=weather-cache -n debug-lab
 ----
 
-You should see `1/1 Running`. The pod can now be created because the resource requests fit within the LimitRange.
+`1/1 Running` と表示されるはずです。リソース要求が LimitRange 内に収まるようになったため、Pod を作成できるようになりました。
 
-**Takeaway:** When a pod never appears at all, check the ReplicaSet events (`oc describe replicaset`). LimitRanges and ResourceQuotas can silently prevent pods from being created.
+**まとめ:** Pod がまったく表示されない場合は、ReplicaSet のイベント（`oc describe replicaset`）を確認します。LimitRange や ResourceQuota によって、Pod の作成がサイレントにブロックされることがあります。
 
-=== Problem 4: CreateContainerConfigError (weather-backend)
+=== 問題 4: CreateContainerConfigError (weather-backend)
 
-**Diagnose**
+**診断 (Diagnose)**
 
 [source,bash,role="execute"]
 ----
 oc describe pod -l app=weather-backend -n debug-lab | grep -E "Warning|Error|configmap"
 ----
 
-You should see:
+以下が表示されるはずです：
 
 ----
 Warning  Failed  Error: configmap "weather-config" not found
 ----
 
-The deployment references a ConfigMap that doesn't exist:
+Deployment が、存在しない ConfigMap を参照しています：
 
 [source,bash,role="execute"]
 ----
 oc get deployment weather-backend -n debug-lab -o jsonpath='{.spec.template.spec.containers[0].envFrom}' | python3 -m json.tool
 ----
 
-**Fix**
+**修正 (Fix)**
 
-Create the missing ConfigMap with the keys the app expects:
+アプリが予期しているキーを持つ不完全な ConfigMap を作成します：
 
 [source,bash,role="execute"]
 ----
@@ -273,122 +273,122 @@ oc create configmap weather-config \
   -n debug-lab
 ----
 
-TIP: You can verify the ConfigMap in the console at **Workloads > ConfigMaps** (project: `debug-lab`) - click `weather-config` to see its keys and values.
+TIP: コンソールの **Workloads > ConfigMaps**（プロジェクト: `debug-lab`）で ConfigMap を確認できます。`weather-config` をクリックして、そのキーと値を参照してください。
 
-Restart the pod to pick up the new ConfigMap:
+Pod を再起動して、新しい ConfigMap を適用させます：
 
 [source,bash,role="execute"]
 ----
 oc delete pod -l app=weather-backend -n debug-lab
 ----
 
-**Verify**
+**検証 (Verify)**
 
 [source,bash,role="execute"]
 ----
 oc get pods -l app=weather-backend -n debug-lab
 ----
 
-You should see `1/1 Running`. Confirm the environment variables are injected:
+`1/1 Running` と表示されるはずです。環境変数が注入されていることを確認します：
 
 [source,bash,role="execute"]
 ----
 oc exec deployment/weather-backend -n debug-lab -- env | grep -E "API_ENDPOINT|CACHE_TTL"
 ----
 
-You should see:
+以下が表示されるはずです：
 
 ----
 API_ENDPOINT=http://weather-api:8080
 CACHE_TTL=300
 ----
 
-TIP: In the console, click the weather-backend pod and select the **Environment** tab to see the injected variables without shelling into the container.
+TIP: コンソールで weather-backend Pod をクリックし、**Environment**（環境）タブを選択すると、コンテナシェルに入ることなく注入された変数を参照できます。
 
-**Takeaway:** CreateContainerConfigError = a referenced ConfigMap or Secret doesn't exist. Check `oc describe pod` for "not found" messages. Create the missing resource and restart the pod.
+**まとめ:** CreateContainerConfigError = 参照されている ConfigMap または Secret が存在しない。`oc describe pod` で "not found" メッセージを確認します。不足しているリソースを作成し、Pod を再起動します。
 
-=== Problem 5: Service Routing Broken (weather-proxy)
+=== 問題 5: Service ルーティング障害 (weather-proxy)
 
-**Diagnose**
+**診断 (Diagnose)**
 
-This pod is `Running` - so what's wrong? In the **OCP Console**, navigate to **Networking -> Services** (project: `debug-lab`) and click `weather-proxy`. The **Pods** tab shows **0 Pods** - immediately revealing that the service can't find any matching pods.
+この Pod は `Running` です。では何が問題なのでしょうか？ **OCP Console** で **Networking -> Services**（プロジェクト: `debug-lab`）に移動し、`weather-proxy` をクリックします。**Pods** タブには **0 Pods** と表示され、Service が一致する Pod を見つけられていないことが即座に判明します。
 
 image::debugging-proxy-service-no-pods.png[weather-proxy Service showing 0 Pods due to selector mismatch, link=self, window=blank]
-Check via CLI as well:
+CLI 経由でも確認してみましょう：
 
 [source,bash,role="execute"]
 ----
 oc get endpointslice -l kubernetes.io/service-name=weather-proxy -n debug-lab
 ----
 
-You should see `ENDPOINTS` is empty (`<unset>`). The service has no backends.
+`ENDPOINTS` が空（`<unset>`）であることが確認できます。Service にバックエンドが存在しません。
 
-Compare the service selector with the pod labels:
+Service セレクターと Pod のラベルを比較します：
 
 [source,bash,role="execute"]
 ----
 echo "=== Service selector ===" && oc get svc weather-proxy -n debug-lab -o jsonpath='{.spec.selector}' | python3 -m json.tool && echo "=== Pod labels ===" && oc get pod -l app=weather-proxy -n debug-lab -o jsonpath='{.items[0].metadata.labels}' | python3 -m json.tool
 ----
 
-Spot the difference? The service selector says `weather-proxi` (typo) but the pod label is `weather-proxy`.
+違いに気づきましたか？ Service セレクターが `weather-proxi`（タイポ）となっているのに対し、Pod ラベルは `weather-proxy` になっています。
 
-**Fix**
+**修正 (Fix)**
 
-Patch the service selector to match the actual pod label:
+Service セレクターにパッチを当てて、実際の Pod ラベルに合わせます：
 
 [source,bash,role="execute"]
 ----
 oc patch svc weather-proxy -n debug-lab -p '{"spec":{"selector":{"app":"weather-proxy"}}}'
 ----
 
-**Verify**
+**検証 (Verify)**
 
 [source,bash,role="execute"]
 ----
 oc get endpointslice -l kubernetes.io/service-name=weather-proxy -n debug-lab
 ----
 
-You should now see the pod's IP in the `ENDPOINTS` column. Traffic will flow to the pod.
+`ENDPOINTS` カラムに Pod の IP が表示されるようになりました。トラフィックが Pod へ流れるようになります。
 
-**Takeaway:** When a pod is Running but the service isn't working, check if the service selector matches the pod labels. A single character typo can break routing. Use `oc get endpointslice` to verify.
+**まとめ:** Pod が Running であるにもかかわらず Service が機能していない場合は、Service セレクターが Pod のラベルと一致しているか確認します。1 文字のタイポでもルーティングが切断されます。`oc get endpointslice` を使用して確認してください。
 
-You can confirm the fix in the console too - go back to **Networking -> Services** → `weather-proxy` → **Pods** tab. The pod now appears:
+コンソールでも修正を確認できます。**Networking -> Services** → `weather-proxy` → **Pods** タブに戻ります。Pod が表示されるようになっています：
 
 image::debugging-proxy-service-fixed.png[weather-proxy Service showing the pod after selector fix, link=self, window=blank]
-=== Problem 6: Permission Denied (weather-db)
+=== 問題 6: 権限拒否 / Permission Denied (weather-db)
 
-**Diagnose**
+**診断 (Diagnose)**
 
-Check the pod status:
+Pod のステータスを確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -l app=weather-db -n debug-lab
 ----
 
-You'll see `weather-db` in CrashLoopBackOff. Check the logs:
+`weather-db` が CrashLoopBackOff になっているのが見えます。ログを確認します：
 
 [source,bash,role="execute"]
 ----
 oc logs deployment/weather-db -n debug-lab
 ----
 
-The log shows: `mkdir: cannot create directory '/var/lib/pgsql': Permission denied`. The container is trying to create a data directory but doesn't have permission.
+ログには `mkdir: cannot create directory '/var/lib/pgsql': Permission denied` と表示されています。コンテナがデータディレクトリを作成しようとしていますが、権限がありません。
 
-This is a **Security Context Constraint (SCC)** issue. Check which SCC the pod is running under:
+これは **Security Context Constraint (SCC)** の問題です。Pod がどの SCC の下で実行されているか確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pod -l app=weather-db -n debug-lab -o jsonpath='{.items[0].metadata.annotations.openshift\.io/scc}'
 ----
 
-It shows `restricted-v2`. This SCC assigns a random user ID to the container for security - the container does NOT run as root. The directory `/var/lib/pgsql` is owned by root inside the image, so the random UID can't write to it.
+`restricted-v2` と表示されます。この SCC は、セキュリティ上の理由からコンテナにランダムなユーザー ID (UID) を割り当てます。コンテナは root として動作し**ません**。イメージ内の `/var/lib/pgsql` ディレクトリは root が所有しているため、ランダムな UID では書き込むことができません。
 
-This is the most common source of pod failures on OpenShift. Containers that expect to run as root will fail under `restricted-v2`.
+これは OpenShift 上での Pod 障害の最も一般的な原因です。root として動作することを期待しているコンテナは、`restricted-v2` の下では失敗します。
 
-**Fix**
+**修正 (Fix)**
 
-Mount an `emptyDir` volume at the data path. The container can always write to emptyDir volumes regardless of its UID:
+データパスに `emptyDir` ボリュームをマウントします。コンテナは、UID に関係なく常に emptyDir ボリュームに書き込むことができます：
 
 [source,bash,role="execute"]
 ----
@@ -398,39 +398,39 @@ oc patch deployment weather-db -n debug-lab --type=json -p='[
 ]'
 ----
 
-**Verify**
+**検証 (Verify)**
 
 [source,bash,role="execute"]
 ----
 oc get pods -l app=weather-db -n debug-lab
 ----
 
-The pod should now be `Running`. Check the logs to confirm the database initialized:
+Pod が `Running` になるはずです。ログを確認してデータベースが初期化されたことを確認します：
 
 [source,bash,role="execute"]
 ----
 oc logs deployment/weather-db -n debug-lab
 ----
 
-You should see `[db] Starting on port 8080` - the database initialized successfully.
+`[db] Starting on port 8080` と表示され、データベースが正常に初期化されたことが分かります。
 
-**Takeaway:** When you see `Permission denied` in a container log, check the SCC with `oc get pod -o jsonpath='{.metadata.annotations.openshift\.io/scc}'`. Under `restricted-v2`, containers run as a random UID and can't write to root-owned directories. Use `emptyDir` volumes for writable paths, or use images designed to run as non-root.
+**まとめ:** コンテナログに `Permission denied` と表示された場合は、`oc get pod -o jsonpath='{.metadata.annotations.openshift\.io/scc}'` で SCC を確認します。`restricted-v2` では、コンテナはランダムな UID として実行され、root 所有のディレクトリには書き込めません。書き込み可能なパスには `emptyDir` ボリュームを使用するか、非 root として実行するように設計されたイメージを使用します。
 
-== Quick Reference
+== クイックリファレンス（Quick Reference）
 
-=== All Fixed
+=== 全問題の修復完了（All Fixed）
 
-Switch to the **OCP Console** tab - **Workloads -> Pods** (project: `debug-lab`). All six pods should now show green `Running` status. Compare this to the red/orange/yellow view you saw at the start - that visual progression is the troubleshooting workflow in action.
+**OCP Console** タブに切り替えます - **Workloads -> Pods**（プロジェクト: `debug-lab`）。6 つの Pod すべてが緑色の `Running` ステータスを表示しているはずです。最初に見た赤/オレンジ/黄色のビューと比較してください。この視覚的な変化こそが、実際のトラブルシューティングワークフローの成果です。
 
 image::debugging-all-fixed.png[All six weather pods showing green Running status, link=self, window=blank]
-Verify via CLI:
+CLI 経由で確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n debug-lab
 ----
 
-All six pods should now be `Running`:
+6 つの Pod すべてが `Running` になっているはずです：
 
 ----
 NAME                                READY   STATUS    RESTARTS   AGE
@@ -442,75 +442,75 @@ weather-frontend-xxxxx              1/1     Running   0          1m
 weather-proxy-xxxxx                 1/1     Running   0          5m
 ----
 
-=== See It Working
+=== 動作の確認（See It Working）
 
-Now that all six microservices are fixed, expose them and open the weather app:
+6 つのマイクロサービスすべてが修復されたので、これらを公開してお天気アプリを開きます：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/05-debugging/expose-weather-app.sh)
 ----
 
-Open the URL in a new browser tab. You should see The Weather App displaying live weather data - fetched by weather-api, processed by weather-backend, cached by weather-cache, and persisted by weather-db. All six microservices working together.
+新しいブラウザタブで URL を開きます。Weather App がリアルタイムの気象データを表示しているのが確認できるはずです。これは、weather-api によって取得され、weather-backend によって処理され、weather-cache によってキャッシュされ、weather-db によって永続化されたものです。6 つのマイクロサービスすべてが連動して動作しています。
 
-NOTE: If the page shows an error on first load, wait a few seconds and refresh - the services may still be starting up.
+NOTE: 初回ロード時にページにエラーが表示された場合は、数秒待ってからリフレッシュしてください。サービスがまだ起動中である可能性があります。
 
 image::debugging-weather-app.png[The Weather App showing live weather data with all six microservices healthy, link=self, window=blank]
-=== Quick Reference
+=== クイックリファレンス（Quick Reference）
 
 [cols="1,2,2"]
 |===
-|Status |Meaning |First Check
+|ステータス |意味 |最初の確認項目
 
 |**ImagePullBackOff**
-|Can't pull container image
-|`oc describe pod` → Events → Check image name/tag
+|コンテナイメージをプルできない
+|`oc describe pod` → Events → イメージ名/タグを確認
 
 |**CrashLoopBackOff**
-|Container starts then crashes
-|`oc logs <pod> --previous` → Check app logs
+|コンテナが起動直後にクラッシュする
+|`oc logs <pod> --previous` → アプリログを確認
 
 |**CreateContainerConfigError**
-|ConfigMap/Secret missing
-|`oc describe pod` → Events → "not found" message
+|ConfigMap/Secret が存在しない
+|`oc describe pod` → Events → "not found" メッセージ
 
-|**No pod created**
-|LimitRange/ResourceQuota violation
-|`oc describe replicaset` → Events → Check resource requests
+|**Pod が作成されない**
+|LimitRange/ResourceQuota 違反
+|`oc describe replicaset` → Events → リソース要求を確認
 
 |**Pending**
-|Can't schedule pod
-|`oc describe pod` → Events → Check resources/node capacity
+|Pod をスケジューリングできない
+|`oc describe pod` → Events → リソース/ノード容量を確認
 
-|**Running but not working**
-|Service selector mismatch or app bug
+|**Running だが機能しない**
+|Service セレクターの不一致またはアプリのバグ
 |`oc get endpointslice` + `oc logs <pod>`
 
-|**Permission denied in logs**
-|SCC restricts container UID
-|Check SCC: `oc get pod -o jsonpath='{.metadata.annotations.openshift\.io/scc}'` → Mount `emptyDir` for writable paths
+|**ログの Permission denied**
+|SCC がコンテナ UID を制限している
+|SCCの確認: `oc get pod -o jsonpath='{.metadata.annotations.openshift\.io/scc}'` → 書き込み可能パス用に `emptyDir` をマウント
 
-|**PVC Pending**
-|Storage can't be provisioned
-|`oc describe pvc` → Events → Check StorageClass name/existence
+|**PVC が Pending**
+|ストレージをプロビジョニングできない
+|`oc describe pvc` → Events → StorageClass 名/存在を確認
 |===
 
-== Cleanup & Summary
+== クリーンアップとまとめ（Cleanup & Summary）
 
-=== Summary
+=== まとめ（Summary）
 
-You diagnosed and fixed six common OpenShift issues:
+OpenShift における 6 つの一般的な問題を診断および修正しました：
 
-* **ImagePullBackOff** - wrong image tag (`9.9` doesn't exist) → `oc set image`
-* **CrashLoopBackOff** - missing config file → create ConfigMap + volume mount
-* **Resource constraint** - memory typo exceeded LimitRange → `oc set resources`
-* **CreateContainerConfigError** - missing ConfigMap → `oc create configmap`
-* **Service selector mismatch** - typo in selector → `oc patch svc`
-* **SCC permission denied** - container can't write to root-owned directory → mount `emptyDir` volume
+* **ImagePullBackOff** - 誤ったイメージタグ（`9.9` は存在しない） → `oc set image`
+* **CrashLoopBackOff** - 設定ファイルの不備 → ConfigMap の作成 + ボリュームマウント
+* **リソース制限** - メモリのタイポによる LimitRange 超過 → `oc set resources`
+* **CreateContainerConfigError** - 設定マップの不足 → `oc create configmap`
+* **Service セレクター不一致** - セレクターのタイポ → `oc patch svc`
+* **SCC 権限拒否** - コンテナが root 所有のディレクトリに書き込めない → `emptyDir` ボリュームのマウント
 
-The pattern is always the same: **check status → describe pod/replicaset → read logs/events → fix → verify.**
+パターンは常に同じです：**「ステータス確認 → Pod/ReplicaSet の詳細 (describe) → ログ/イベントの確認 → 修正 → 検証」**
 
-=== Cleanup
+=== クリーンアップ（Cleanup）
 
 [source,bash,role="execute"]
 ----
