@@ -1,4 +1,4 @@
-= ネットワークセキュリティ（Network Security）
+= ネットワークセキュリティ
 :page-toclevels: 1
 
 **所要時間:** 10〜15 分 +
@@ -6,17 +6,17 @@
 
 include::partial$console-access.adoc[]
 
-== シナリオ（The Scenario）
+== シナリオ
 
 アプリはトラフィックを受信していますが、デフォルトではすべての Pod が他のすべての Pod と通信でき、どの Pod もインターネットに到達できます。これでは本番環境で運用できる状態とは言えません。
 
 このモジュールでは、状況をロックダウンします。NetworkPolicy を実装して Pod を分離し、EgressFirewall を設定して送信トラフィックを制御し、外部ファイアウォールで許可リスト（allowlist）に登録できる予測可能な送信元 IP 用に EgressIP をセットアップします。事前と事後のテストを行って、各機能が動作することを証明します。
 
-== OpenShift のネットワーク（OpenShift Networking）
+== OpenShift のネットワーク
 
 OpenShift はネットワークプラグインとして **OVN-Kubernetes** を使用します（4.20 でサポートされている唯一のオプションです）。これは Pod ネットワーク、NetworkPolicy によるネットワークの分離、送信（Egress）トラフィックの制御、およびオプションの IPsec 暗号化を処理します。
 
-=== クラスターネットワーク設定の表示（View Cluster Network Configuration）
+=== クラスターネットワーク設定の表示
 
 [source,bash,role="execute"]
 ----
@@ -31,7 +31,7 @@ TIP: コンソールの **Administration → Cluster Settings → Configuration*
 * `clusterNetwork` - Pod ネットワーク用の IP 範囲（クラスターによって異なります）
 * `serviceNetwork` - Service 用の IP 範囲（クラスターによって異なります）
 
-=== ネットワークオペレーターの健全性の検証（Verify Network Operator Health）
+=== ネットワークオペレーターの健全性の検証
 
 [source,bash,role="execute"]
 ----
@@ -47,11 +47,11 @@ oc get pods -n openshift-ovn-kubernetes
 
 クラスター上で実行されている OVN Pod が表示されます：`ovnkube-node`（すべてのノードで実行される DaemonSet）および `ovnkube-control-plane`（OVN コントロールプレーンを管理する Deployment）。
 
-== NetworkPolicy: Pod 間セキュリティ（NetworkPolicy: Pod-to-Pod Security）
+== NetworkPolicy: Pod 間セキュリティ
 
 デフォルトでは、すべての Pod が他のすべての Pod と通信できます。**NetworkPolicy** はこれを制限します。
 
-=== テスト用プロジェクトの作成（Create Test Projects）
+=== テスト用プロジェクトの作成
 
 [source,bash,role="execute"]
 ----
@@ -78,7 +78,7 @@ oc get pods -n netpol-backend
 
 続行する前に、両方の Pod が `Running` と表示されている必要があります。
 
-=== デフォルトの接続性のテスト（成功するはずです）（Test Default Connectivity (Should Work)）
+=== デフォルトの接続性のテスト（成功するはずです）
 
 Frontend から Backend への接続性をテストします：
 
@@ -90,7 +90,7 @@ oc exec -n netpol-frontend deployment/frontend -- curl -s --connect-timeout 5 ht
 
 期待される結果：アプリからの HTML 出力 - デフォルトで接続が機能します。
 
-=== Deny-All NetworkPolicy の適用（Apply Deny-All NetworkPolicy）
+=== Deny-All NetworkPolicy の適用
 
 [source,bash,role="execute"]
 ----
@@ -109,7 +109,7 @@ EOF
 
 3 行のコードがすべての処理を行います：`podSelector: {}` はすべての Pod をターゲットにし、`policyTypes: Ingress` は受信トラフィックを制御することを意味し、空の `ingress: []` リストは何も通過を許可しないことを意味します。これが標準的な「デフォルト拒否（default deny）」パターンです。まずすべてを制限し、それから特定のアナをあけていきます。
 
-=== 接続性の再テスト（失敗するはずです）（Test Connectivity Again (Should Fail)）
+=== 接続性の再テスト（失敗するはずです）
 
 [source,bash,role="execute"]
 ----
@@ -119,9 +119,9 @@ oc exec -n netpol-frontend deployment/frontend -- curl -s --connect-timeout 5 ht
 
 期待される結果：接続タイムアウト（5 秒後に出力なし）。NetworkPolicy がブロックしました。
 
-=== 特定のネームスペースからのトラフィックの許可（Allow Traffic from Specific Namespace）
+=== 特定のネームスペースからのトラフィックの許可
 
-ここでアナをあけます。Frontend ネームスペースから Backend へのアクセスのみを許可し、ポート 8080 のみに限定します：
+ここで穴をあけます。Frontend ネームスペースから Backend へのアクセスのみを許可し、ポート 8080 のみに限定します：
 
 [source,bash,role="execute"]
 ----
@@ -153,7 +153,7 @@ EOF
 
 これは厳格です：`deployment: backend` とラベル付けされた Pod のみ、`app-tier: frontend` とラベル付けされたネームスペースからのみ、TCP 8080 のみが許可されます。その他はすべて、`deny-all` ポリシーによって拒否されたままになります。
 
-=== 接続性のテスト（再び成功するはずです）（Test Connectivity (Should Work Again)）
+=== 接続性のテスト（再び成功するはずです）
 
 [source,bash,role="execute"]
 ----
@@ -163,7 +163,7 @@ oc exec -n netpol-frontend deployment/frontend -- curl -s --connect-timeout 5 ht
 
 期待される結果：アプリからの HTML 出力 - 許可ポリシーが反映されます。
 
-=== NetworkPolicy の表示（View NetworkPolicies）
+=== NetworkPolicy の表示
 
 [source,bash,role="execute"]
 ----
@@ -180,7 +180,7 @@ image::netpol-deny-all.png[deny-all NetworkPolicy showing all incoming traffic d
 image::netpol-allow-frontend.png[allow-from-frontend NetworkPolicy showing selectors and port rule, link=self, window=blank]
 作成したばかりの YAML と比較してみてください。本番環境で 50 個のネームスペースにわたるポリシーを監査する場合、このビューは生の YAML を読むよりも格段に高速です。
 
-=== NetworkPolicy のベストプラクティス（NetworkPolicy Best Practices）
+=== NetworkPolicy のベストプラクティス
 
 [cols="1,2"]
 |===
@@ -199,7 +199,7 @@ image::netpol-allow-frontend.png[allow-from-frontend NetworkPolicy showing selec
 |アノテーションを使用してポリシーの目的を記述します
 |===
 
-=== AdminNetworkPolicy: クラスターレベルのポリシー（AdminNetworkPolicy: Cluster-Scoped Policies）
+=== AdminNetworkPolicy: クラスターレベルのポリシー
 
 標準の NetworkPolicy はネームスペースレベルで機能し、各チームが自らのものを管理します。**AdminNetworkPolicy (ANP)** はクラスターレベルのリソースであり、プラットフォーム管理者がすべてのネームスペースにわたってネットワークポリシーを強制適用できます。これはネームスペースレベルのポリシーよりも優先されます。
 
@@ -272,9 +272,9 @@ bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showr
 
 NOTE: AdminNetworkPolicy は `policy.networking.k8s.io/v1alpha1` を使用します。また、フォールバックとして機能する `BaselineAdminNetworkPolicy` も存在します。これは、他の ANP や NetworkPolicy がマッチしない場合にのみ適用されます。ANP と BANP を組み合わせることで、ネームスペースレベルでのカスタマイズを許可しつつ、プラットフォームチームにガードレールを提供します。
 
-== Egress コントロール（Egress Controls）
+== Egress コントロール
 
-=== EgressFirewall: 送信トラフィックの制御（EgressFirewall: Controlling Outbound Traffic）
+=== EgressFirewall: 送信トラフィックの制御
 
 **EgressFirewall** は、Pod が到達できる外部 IP/ドメインを制御します。これは OVN-Kubernetes の機能です。
 
@@ -331,7 +331,7 @@ oc exec -n netpol-frontend deployment/frontend -- curl -s --connect-timeout 3 -I
 oc get egressfirewall -n netpol-frontend -o yaml
 ----
 
-**DNS ベースの EgressFirewall（DNS-Based EgressFirewall）**
+**DNS ベースの EgressFirewall**
 
 IP アドレスの代わりに DNS 名を使用することもできます（OVN が解決します）：
 
@@ -360,7 +360,7 @@ EOF
 
 NOTE: ワイルドカード DNS 名（例：`*.redhat.com`）は OpenShift 4.20 のテクノロジープレビュー機能であり、すべてのクラスターで有効になっているとは限りません。本番環境の設定では特定のホスト名を使用してください。
 
-**EgressFirewall のユースケース（EgressFirewall Use Cases）**
+**EgressFirewall のユースケース**
 
 [cols="1,2"]
 |===
@@ -391,7 +391,7 @@ NOTE: ワイルドカード DNS 名（例：`*.redhat.com`）は OpenShift 4.20 
 * すべて拒否する**送信（egress）** NetworkPolicy を追加すると、DNS 解決が壊れます。Pod は CoreDNS（`openshift-dns` ネームスペースのポート 53 UDP/TCP）にアクセスする必要があります。送信を制限する場合は、常に明示的に DNS を許可してください。
 ====
 
-=== EgressIP: 予測可能な送信元 IP（EgressIP: Predictable Source IPs）
+=== EgressIP: 予測可能な送信元 IP
 
 image::diagrams/04_egress_ip.png[OpenShift EgressIP Architecture, align=center, link=self, window=blank]
 **EgressIP** は、特定の Pod からの送信トラフィックに固定送信元 IP を割り当てます。外部ファイアウォールでクラスターを許可リストに登録する必要がある場合に便利です。
@@ -442,7 +442,7 @@ spec:
 
 **注意:** EgressIP 設定にはネットワークの計画が必要であり、通常はクラスターのセットアップ時に行われます。IP はノードネットワーク上でルーティング可能である必要があります。
 
-**EgressIP を使用するタイミング（When to Use EgressIP）**
+**EgressIP を使用するタイミング**
 
 [cols="1,2"]
 |===
@@ -461,7 +461,7 @@ spec:
 |IP ベースの認証を必要とするシステムへの接続
 |===
 
-== DNS とサービス検出（DNS and Service Discovery）
+== DNS とサービス検出
 
 OpenShift は Service に対して自動 DNS を提供します。
 
@@ -473,7 +473,7 @@ Service には以下からアクセス可能です：
 <service-name>.<namespace>.svc.cluster.local
 ----
 
-=== DNS 解決のテスト（Test DNS Resolution）
+=== DNS 解決のテスト
 
 任意の Pod から DNS 解決をテストします：
 
@@ -484,7 +484,7 @@ oc exec -n netpol-frontend deployment/frontend -- getent hosts backend.netpol-ba
 
 Backend サービスのクラスター IP の後にホスト名が表示されるはずです。これにより、Pod がクラスター DNS を介して名前で他の Service を解決できることが確認できます。
 
-=== クラスター DNS 設定の表示（View Cluster DNS Configuration）
+=== クラスター DNS 設定の表示
 
 [source,bash,role="execute"]
 ----
@@ -497,7 +497,7 @@ oc get dns cluster -o yaml
 
 NOTE: クラウドプラットフォーム（AWS、Azure、GCP）では、クラウド DNS ゾーン用の `publicZone` および `privateZone` フィールドも表示されます。その他のプラットフォームでは存在しない場合があります。
 
-=== CoreDNS Pod の表示（View CoreDNS Pods）
+=== CoreDNS Pod の表示
 
 [source,bash,role="execute"]
 ----
@@ -506,7 +506,7 @@ oc get pods -n openshift-dns
 
 CoreDNS はクラスター内のすべての Pod に DNS 解決を提供します。
 
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
 [source,bash,role="execute"]
 ----
@@ -543,7 +543,7 @@ oc get egressip -A
 oc get dns cluster -o yaml
 ----
 
-=== 追加リソース（Additional Resources）
+=== 追加リソース
 
 * **OVN-Kubernetes:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ovn-kubernetes_network_plugin/index[OVN-Kubernetes network plugin, window=blank]
 * **NetworkPolicy:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/network-policy[About network policy, window=blank]
