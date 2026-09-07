@@ -1,11 +1,11 @@
-= Developer Hub - ポータル運用 (Developer Hub - Portal Operations)
+= Developer Hub - ポータル運用
 
 **所要時間:** 25-30 分 +
 **形式:** ガイド付き探索 + ハンズオン
 
 include::partial$console-access.adoc[]
 
-== 課題 (The Problem)
+== 課題
 
 週に何回、誰かから _「私のアプリは動いていますか？」_ や _「ネームスペースを作成してもらえますか？」_ といったメッセージが届きますか？
 
@@ -20,7 +20,7 @@ RHDH は組織に以下を提供します：
 このモジュールでは、複数のチームがすでに利用している稼働中の Developer Hub を探索し、開発者に見えるものを確認し、セルフサービステンプレートの動作を観察し、新しいサービスを連携させます。これは、新しいチームがオンボーディングする際にあなたのデスクに届くタスクと同じ種類の内容です。
 
 image::diagrams/12_devhub.png[Red Hat Developer Hub Architecture, 400, align=center, link=self, window=blank]
-== 開発者ポータルの探索 (Explore the Developer Portal)
+== 開発者ポータルの探索 
 
 === ステップ 1: Developer Hub へのアクセス
 
@@ -115,7 +115,7 @@ image::rhdh-inventory-crashloop-errors.png[inventory-system showing error report
 image::rhdh-order-tracker-empty.png[order-tracker Kubernetes tab showing no resources, link=self, window=blank]
 これについては、このモジュールの後ほどで修正します。
 
-== 仕組みの理解 (Understand How It Works)
+== 仕組みの理解
 
 RHDH がどのように見えるかを確認しました。次に、どのような仕組みで接続されているのかを把握しましょう。何か障害が発生した際、確認が必要となるコンポーネント群です。
 
@@ -189,7 +189,7 @@ oc get deployments -n ops-track-demo -o custom-columns='NAME:.metadata.name,BACK
 
 お天気マイクロサービスのデプロイメント群は、backstage ID として `weather-app` を表示するはずです。`<none>` と表示された `weather-db` が見えるかもしれませんが、これはモジュール 05 のデバッグ演習用 Pod であり、カタログの一部ではありません。ラベルが間違っているか存在しないデプロイメントは、Kubernetes タブに表示されません。トラブルシューティングセクションでまさにこの現象を確認します。
 
-== セルフサービスの動作の観察 (Watch Self-Service in Action)
+== セルフサービスの動作の観察
 
 運用チームにとっての RHDH の最大の価値の 1 つは、以前ならチケットとして届いていた要求を自動で処理できる点です。実際のソフトウェアテンプレートの動きを見てみましょう。
 
@@ -245,7 +245,7 @@ oc get deployments -n order-tracker -o custom-columns='NAME:.metadata.name,BACKS
 image::rhdh-order-tracker-2pods.png[order-tracker showing 2 live pods deployed by the template, link=self, window=blank]
 これが、以前ならあなたのチームに届いていた 3 つの個別リクエスト ( _「ネームスペースを作成してくれますか？」_、_「アプリをデプロイしてくれますか？」_、_「Developer Hub に連携してくれますか？」_ ) に代わるものです。1つのテンプレート、ワンクリックで完了します。
 
-== トラブルシューティング: 開発チームからのチケット (Troubleshoot: Tickets from Dev Teams)
+== トラブルシューティング: 開発チームからのチケット
 
 開発チームから 2 件のチケットがキューに入っています。それらを解決していきましょう。
 
@@ -348,7 +348,7 @@ oc rollout restart deployment/inventory-api deployment/inventory-db-sync deploym
 
 1つ目は運用側での修正 (ラベルの修正) です。2つ目は開発チーム側の問題 (問題点を伝え、彼ら自身にコードを修正させる) です。この違いを理解しておくことで、本来対応する必要のない問題に時間を取られるのを防ぐことができます。
 
-== Developer Hub のモニタリング (Monitor Developer Hub)
+== Developer Hub のモニタリング
 
 RHDH はデフォルトで Prometheus メトリクス (カタログエンティティ数、API リクエストのレイテンシ、メモリ使用量、バックグラウンドタスクの健全性) を公開します。ポータルの安定稼働を担当する管理者として、これらを収集する必要があります。
 
@@ -398,7 +398,7 @@ sum(rate(http_server_duration_count{namespace="backstage"}[5m]))
 image::rhdh-metrics-request-rate.png[Prometheus metrics showing RHDH request rate, link=self, window=blank]
 TIP: これらは Prometheus が ServiceMonitor を持つ任意のワークロードに対して収集するメトリクスと同じです。RHDH も組み込み Prometheus スタックによって監視されるワークロードの1つに過ぎません。
 
-== 学んだこと (What You Learned)
+== 学んだこと
 
 [cols="1,2"]
 |===
@@ -420,7 +420,7 @@ TIP: これらは Prometheus が ServiceMonitor を持つ任意のワークロ�
 |1つの切り替えでカタログと API メトリクスを Prometheus に公開できます - 同じ可視性スタックにワークロードを1つ追加するだけです
 |===
 
-== さらなるステップ (Going Further)
+== さらなるステップ
 
 このモジュールでは、開発者が毎日使用するツールを理解するという運用の観点から RHDH を紹介しました。完全なプラットフォームエンジニアリングの実装では以下が追加されます：
 
@@ -432,7 +432,7 @@ TIP: これらは Prometheus が ServiceMonitor を持つ任意のワークロ�
 
 TIP: テンプレートの構築、プラグインの構成、または Developer Hub を使用したプラットフォームエンジニアリングに関心がありますか？ **OpenShift Days: Dev Track** をチェックするか、担当者にセットアップについて問い合わせてみてください。
 
-== クリーンアップ (Cleanup)
+== クリーンアップ
 
 [source,bash,role="execute"]
 ----
