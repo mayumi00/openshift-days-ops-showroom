@@ -1,172 +1,172 @@
-= Setup & Overview
+= セットアップと概要（Setup & Overview）
 :page-toclevels: 1
 
-**Duration:** 15-20 minutes +
-**Format:** Hands-on demonstration
+**所要時間:** 15-20 分 +
+**形式:** ハンズオンデモ
 
 include::partial$console-access.adoc[]
 
 image::ops-day-banner.png[OpenShift Ops Day, width=100%]
 
-== Let's Go
+== さあ、始めましょう（Let's Go）
 
-You have cluster admin access to a live OpenShift cluster. Let's make sure everything's working - click the commands below:
+あなたには、稼働中の OpenShift クラスターへの cluster-admin（クラスター管理者）アクセス権が付与されています。すべてが正常に動作しているか確認しましょう。以下のコマンドをクリックしてください：
 
 [source,bash,role="execute"]
 ----
 oc whoami
 ----
 
-You should see your admin user.
+管理者ユーザーが表示されるはずです。
 
 [source,bash,role="execute"]
 ----
 oc get nodes
 ----
 
-Three nodes, all `Ready`.
+3つのノードが表示され、すべて `Ready` 状態になっているはずです。
 
 [source,bash,role="execute"]
 ----
 oc get clusterversion
 ----
 
-That's your cluster version and update channel. You're in.
+クラスターのバージョンとアップデートチャネルが表示されます。準備完了です。
 
-== About This Workshop
+== このワークショップについて（About This Workshop）
 
-Every ops team hits the same wall with Kubernetes: 
+どのような運用チームも、Kubernetes において同じ壁に突き当たります：
 
-- The cluster is running, but who handles authentication? 
-- How do you back up a namespace someone accidentally deleted? 
-- What happens when pods crash at 2am and nobody knows where to look?
+- クラスターは稼働しているが、認証は誰が管理するのか？
+- 誰かが誤って削除したネームスペースをどのようにバックアップするのか？
+- 午前2時に Pod がクラッシュし、誰もどこを確認すべきか分からない場合はどうすればよいか？
 
-This workshop lets you answer those questions through hands-on exercises. You'll break things and fix them, diagnose real failure modes, configure production security, and see what OpenShift looks like when things go wrong (and how fast you can recover).
+このワークショップでは、ハンズオン演習を通じてそれらの疑問に答えることができます。障害を発生させてそれを修復し、実際の障害モードを診断し、本番環境のセキュリティを設定し、何か問題が発生した際に OpenShift がどのように見えるか（そしてどれほど迅速に復旧できるか）を確認します。
 
-=== Your Workshop Interface
+=== ワークショップインターフェース（Your Workshop Interface）
 
-Your workshop runs in a split-panel interface with the following panels:
+ワークショップは、以下のパネルで構成される分割パネル形式のインターフェースで実行されます：
 
-* **Left panel** - Instructions (what you're reading now)
-* **Right panel** - Tabbed workspace with your cluster tools
-* **Draggable divider** - Drag the border between panels to resize
+* **左パネル** - 指示（今読んでいる内容）
+* **右パネル** - クラスターツールを備えたタブ付きワークスペース
+* **ドラッグ可能な区切り線** - パネル間の境界線をドラッグしてサイズを変更可能
 
 image::showroom-tabs.png[Showroom interface showing tabs for OCP Console, Terminal, RHACS, ArgoCD, and Developer Hub, link=self, window=blank]
 [cols="1,3"]
 |===
-|Tab |What it is
+|タブ |説明
 
 |**OCP Console**
-|The OpenShift web console - cluster management, monitoring dashboards, and troubleshooting.
+|OpenShift Web コンソール - クラスター管理、モニタリングダッシュボード、トラブルシューティング。
 
 |**Terminal**
-|A web-based terminal pre-connected to your cluster. Run `oc` commands directly - no local setup needed.
+|クラスターにあらかじめ接続されている Web ベースのターミナル。ローカルでのセットアップを必要とせず、`oc` コマンドを直接実行可能。
 
 |**RHACS**
-|Red Hat Advanced Cluster Security - vulnerability scanning, compliance, and runtime security.
+|Red Hat Advanced Cluster Security - 脆弱性スキャン、コンプライアンス、実行時セキュリティ。
 
 |**ArgoCD**
-|OpenShift GitOps - continuous delivery using GitOps principles.
+|OpenShift GitOps - GitOps の原則を使用した継続的デリバリー。
 
 |**Developer Hub**
-|Red Hat Developer Hub - developer portal with software catalogs and self-service templates.
+|Red Hat Developer Hub - ソフトウェアカタログとセルフサービステンプレートを備えた開発者ポータル。
 |===
 
-TIP: Highlighted command blocks are **clickable** - they switch to the Terminal tab and execute automatically.
+TIP: ハイライトされたコマンドブロックは**クリック可能**です。クリックすると「Terminal」タブに切り替わり、自動的に実行されます。
 
-=== Modules
+=== モジュール（Modules）
 
 [NOTE]
 ====
-**This workshop is modular.** Your session has a specific set of modules - only the ones in the **navigation on the left** are available. The full catalog covers:
+**このワークショップはモジュール式です。** セッションには特定のモジュールセットが含まれており、**左側のナビゲーション**にあるモジュールのみが利用可能です。完全なカタログの構成は以下のとおりです：
 ====
 
 [cols="1,3"]
 |===
-|Area |What you'll do
+|領域 |行うこと
 
-|**Platform Fundamentals**
-|Verify cluster health, check etcd metrics, deploy an app and expose it in 30 seconds
+|**プラットフォームの基礎 (Platform Fundamentals)**
+|クラスターの健全性を検証し、etcd メトリクスを確認し、アプリをデプロイして 30 秒で公開する
 
-|**Application Operations**
-|Deploy workloads, break a readiness probe on purpose, scale with the Horizontal Pod Autoscaler (HPA) under real load, configure network policies
+|**アプリケーションの運用 (Application Operations)**
+|ワークロードをデプロイし、意図的に Readiness プローブを失敗させ、実際の負荷下で Horizontal Pod Autoscaler (HPA) を使用してスケーリングし、ネットワークポリシーを設定する
 
-|**Identity & Access**
-|Integrate LDAP and OIDC authentication, sync groups, test RBAC by logging in as different users
+|**アイデンティティとアクセス (Identity & Access)**
+|LDAP および OIDC 認証を統合し、グループを同期し、異なるユーザーとしてログインして RBAC をテストする
 
-|**Day 2 Operations**
-|Create alerting rules, set up logging, configure distributed tracing, right-size workloads with VPA
+|**Day 2 運用 (Day 2 Operations)**
+|アラートルールを作成し、ロギングをセットアップし、分散トレーシングを設定し、VPA でワークロードを適正規模化する
 
-|**Advanced Capabilities**
-|Run a VM alongside containers and live-migrate it, manage multiple clusters with ACM, scan for vulnerabilities with ACS
+|**高度な機能 (Advanced Capabilities)**
+|コンテナと並行して VM を実行しライブマイグレーションを行い、ACM で複数のクラスターを管理し、ACS で脆弱性をスキャンする
 
-|**Developer Productivity**
-|Register applications in Developer Hub, see how golden path templates replace ops tickets with self-service
+|**開発者の生産性 (Developer Productivity)**
+|Developer Hub にアプリケーションを登録し、ゴールデンパステンプレートが運用チームへのチケットをセルフサービスへ置き換える様子を確認する
 |===
 
-== Exploring the Platform
+== プラットフォームの探索（Exploring the Platform）
 
 image::diagrams/01_platform_architecture.png[OpenShift Platform Architecture, align=center, link=self, window=blank]
-Your cluster is already running with monitoring, a container registry, ingress routing, and a web console - all built in. Let's see what's there.
+お使いのクラスターは、モニタリング、コンテナレジストリ、Ingress ルーティング、Web コンソールをあらかじめ統合した状態で稼働しています。何が含まれているか確認してみましょう。
 
-=== Step 1: Access the Administrator Console
+=== ステップ 1: 管理者コンソールへのアクセス
 
-The OpenShift Web Console provides a unified view of your entire cluster.
+OpenShift Web コンソールは、クラスター全体の一貫したビューを提供します。
 
 image::ocp-console-overview.png[OpenShift Administrator Console Overview, link=self, window=blank]
-You can access the console in two ways:
+コンソールへは2つの方法でアクセスできます：
 
-* **OCP Console tab** - Click the **OCP Console** tab at the top of this workshop. The console is embedded directly in the workshop interface so you can follow along without switching windows.
-* **Separate browser tab** - If you prefer a full-screen experience, you can open the console in a separate browser tab by clicking the URL:
+* **OCP Console タブ** - このワークショップの上部にある **OCP Console** タブをクリックします。コンソールはワークショップのインターフェースに直接埋め込まれているため、ウィンドウを切り替えることなく手順を進めることができます。
+* **別のブラウザタブ** - フルスクリーンでの体験を希望する場合は、以下の URL をクリックして別のブラウザタブでコンソールを開くことができます：
 {openshift_cluster_console_url}[window=blank]
 
-NOTE: ctrl + click on the URL to open URLs in a new tab.
+NOTE: 新しいタブで URL を開くには、URL を Ctrl + クリック（Mac では Cmd + クリック）します。
 
-TIP: If you see an authentication error, click **Try Again** or reload the tab at the top and try again.
+TIP: 認証エラーが表示された場合は、**Try Again** をクリックするか、上部のタブを再読み込みして再試行してください。
 
-Administrator login credentials:
+管理者ログイン認証情報：
 
 [cols="1,1"]
 |===
-| *Username:* | {openshift_cluster_admin_username}
-| *Password:* | {openshift_cluster_admin_password}
+| *ユーザー名:* | {openshift_cluster_admin_username}
+| *パスワード:* | {openshift_cluster_admin_password}
 |===
 
-=== Step 2: Switch to Administrator Perspective
+=== ステップ 2: 管理者パースペクティブへの切り替え
 
-In the top-left corner of the console, you'll see a perspective switcher dropdown. Click the dropdown and select **Administrator**.
+コンソールの左上隅に、パースペクティブ切り替えドロップダウンがあります。ドロップダウンをクリックし、**Administrator**（管理者）を選択します。
 
-=== Step 3: Dashboard Overview
+=== ステップ 3: ダッシュボードの概要
 
-Once in the Administrator perspective, you'll see the **Overview** dashboard under **Home → Overview**.
+管理者パースペクティブに切り替えると、**Home → Overview** に **Overview**（概要）ダッシュボードが表示されます。
 
 image::ocp-dashboard-overview.png[OpenShift Administrator Dashboard Overview, link=self, window=blank]
-**Key sections to notice:**
+**注目すべき主要セクション：**
 
-1. **Cluster Status** - Overall health at a glance
-2. **Cluster Utilization** - CPU, Memory, Storage metrics
-3. **Cluster Inventory** - Node count, Pod count, etc.
-4. **Activity** - Recent events and alerts
+1. **Cluster Status** - 一目で確認できる全体の健全性
+2. **Cluster Utilization** - CPU、メモリ、ストレージのメトリクス
+3. **Cluster Inventory** - ノード数、Pod 数など
+4. **Activity** - 最近のイベントとアラート
 
-This single dashboard gives you cluster health, utilisation, inventory, and recent events - all in one view, with no setup required.
+この単一のダッシュボードにより、クラスターの健全性、使用率、インベントリ、および最近のイベントをすべて1つのビューで確認でき、セットアップは一切不要です。
 
-== Platform Capabilities
+== プラットフォーム機能（Platform Capabilities）
 
 image::diagrams/01_control_plane.png[Control Plane Responsibilities, 300, align=center, link=self, window=blank]
-Everything below - monitoring, a container registry, and ingress routing - was running before anyone logged in. Let's prove it.
+以下に示すモニタリング、コンテナレジストリ、Ingress ルーティングのすべては、誰かがログインする前からすでに稼働していました。それを確認してみましょう。
 
-=== Monitoring
+=== モニタリング
 
-Nobody installed Prometheus on this cluster. It's already running.
+このクラスターに Prometheus をインストールした人はいません。すでに稼働しています。
 
-**Explore Prometheus (CLI)**
+**Prometheus の確認 (CLI)**
 
 [source,bash,role="execute"]
 ----
 oc get pods -n openshift-monitoring | grep prometheus
 ----
 
-You'll see Prometheus pods already running (output truncated):
+Prometheus の Pod がすでに実行中であることが確認できます（出力の一部を省略）：
 
 ----
 prometheus-k8s-0                                        6/6     Running   0          55m
@@ -176,49 +176,49 @@ prometheus-operator-admission-webhook-c9f987dd7-h4jtc   1/1     Running   0     
 prometheus-operator-bb6c949f9-6rpnl                     2/2     Running   0          66m
 ----
 
-**Access Metrics (Console)**
+**メトリクスへのアクセス (コンソール)**
 
-1. In the Console, navigate to **Observe → Dashboards**
-2. Click the dropdown labeled **Dashboard** (it may show "API Performance" by default)
-3. Select **Kubernetes / Compute Resources / Cluster** from the dropdown
-4. You'll see real-time metrics:
-   - CPU Utilisation
-   - Memory Utilisation
-   - Network I/O
-   - Filesystem I/O
+1. コンソールで **Observe → Dashboards** に移動します
+2. **Dashboard** というラベルのドロップダウンをクリックします（デフォルトで「API Performance」と表示されている場合があります）
+3. ドロップダウンから **Kubernetes / Compute Resources / Cluster** を選択します
+4. リアルタイムのメトリクスが表示されます：
+   - CPU 使用率 (CPU Utilisation)
+   - メモリ使用率 (Memory Utilisation)
+   - ネットワーク I/O (Network I/O)
+   - ファイルシステム I/O (Filesystem I/O)
 
 image::observe-cluster-metrics-dashboard.png[Kubernetes Cluster Metrics Dashboard, link=self, window=blank]
-**No configuration required.** This is built-in.
+**構成は一切不要です。** これらは組み込まれています。
 
-**Query Prometheus (Advanced)**
+**Prometheus へのクエリ (応用)**
 
-1. Navigate to **Observe → Metrics**
-2. Try this PromQL query:
+1. **Observe → Metrics** に移動します
+2. 以下の PromQL クエリを試してみます：
 +
 [source,role="copypaste"]
 ----
 sum(rate(container_cpu_usage_seconds_total[5m])) by (namespace)
 ----
 +
-3. Click **Run Queries**
+3. **Run Queries** をクリックします
 
-You'll see CPU usage broken down by namespace. This is a useful way to see which namespaces are consuming the most CPU.
+ネームスペースごとに分類された CPU 使用率が表示されます。これは、どのネームスペースが最も多くの CPU を消費しているかを確認するのに便利な方法です。
 
-NOTE: Look at which namespaces are consuming the most CPU. `openshift-monitoring` and `openshift-etcd` are usually at the top because they run the cluster's own infrastructure. 
+NOTE: どのネームスペースが最も多く CPU を消費しているか確認してください。`openshift-monitoring` と `openshift-etcd` は、クラスター自体のインフラストラクチャを実行しているため、通常は上位になります。
 
-All of this was available the moment the cluster came up.
+これらすべては、クラスターが起動した瞬間から利用可能でした。
 
 image::prometheus-cpu-by-namespace-query.png[Prometheus Query Results - CPU by Namespace, link=self, window=blank]
-=== Container Registry
+=== コンテナレジストリ
 
-Did anyone set up an image registry? Let's check:
+誰かがイメージレジストリをセットアップしたでしょうか？確認してみましょう：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n openshift-image-registry
 ----
 
-Output (truncated):
+出力（一部省略）：
 
 ----
 NAME                                               READY   STATUS    RESTARTS      AGE
@@ -230,18 +230,18 @@ node-ca-5lh4f                                      1/1     Running   0          
 ...
 ----
 
-Already running - with authentication, HA replicas, and storage configured. Nobody installed it.
+認証、高可用性レプリカ、ストレージが設定された状態で、すでに稼働しています。誰もインストールしていません。
 
-**View Image Streams**
+**イメージストリームの表示**
 
-Image streams are OpenShift's way of pointing to container images without hardcoding registry URLs. When an image updates, your builds and deployments can automatically pick up the change.
+イメージストリームは、レジストリ URL をハードコードすることなくコンテナイメージを指し示す OpenShift の方法です。イメージが更新されると、ビルドやデプロイメントが自動的にその変更を取り込むことができます。
 
 [source,bash,role="execute"]
 ----
 oc get imagestreams -n openshift
 ----
 
-You'll see pre-loaded builder images (output truncated):
+事前にロードされたビルダーイメージが表示されます（出力の一部を省略）：
 
 ----
 NAME                   IMAGE REPOSITORY                                                     TAGS
@@ -251,18 +251,18 @@ nodejs                 image-registry.openshift-image-registry.svc:5000/openshif
 python                 image-registry.openshift-image-registry.svc:5000/openshift/python   3.11-ubi8,3.11-ubi9,3.12-minimal-ubi10...
 ----
 
-These are **ready to use** - no Docker Hub rate limits, no external dependencies.
+これらは**すぐに使用可能**です。Docker Hub のレート制限も外部依存関係もありません。
 
-=== Routing
+=== ルーティング
 
-Same story with ingress - it's already there. Check it:
+Ingress についても同じことが言えます。すでにそこに存在します。確認してみましょう：
 
 [source,bash,role="execute"]
 ----
 oc get routes -A | head -10
 ----
 
-You'll see Routes (OpenShift's ingress abstraction - output truncated):
+Route（OpenShift の Ingress 抽象化）が表示されます（出力の一部を省略）：
 
 ----
 NAMESPACE                  NAME                  HOST/PORT
@@ -272,11 +272,11 @@ openshift-console          console               console-openshift-console.apps.
 openshift-console          downloads             downloads-openshift-console.apps.cluster...
 ----
 
-Routes give you HAProxy-based ingress with automatic TLS certs and DNS. OpenShift also supports standard Kubernetes `Ingress` resources if you prefer.
+Route により、自動 TLS 証明書と DNS を備えた HAProxy ベースの Ingress が提供されます。好みに応じて、OpenShift は標準の Kubernetes `Ingress` リソースもサポートします。
 
-**Try It: Deploy and Expose in 30 Seconds**
+**試してみましょう：30 秒でデプロイと公開を実行**
 
-How fast can you go from nothing to a running app with a public URL? Three commands:
+何もない状態から、公開 URL を持つ稼働中のアプリをどれほど速く作成できるでしょうか？3つのコマンドで実行できます：
 
 [source,bash,role="execute"]
 ----
@@ -285,34 +285,34 @@ oc new-app --name=hello --image=registry.access.redhat.com/ubi9/httpd-24
 oc create route edge hello --service=hello
 ----
 
-Get the URL and test it:
+URL を取得してテストします：
 
 [source,bash,role="execute"]
 ----
 curl -sk https://$(oc get route hello -n quick-demo -o jsonpath='{.spec.host}') | grep title
 ----
 
-You should see the httpd test page HTML. That's a deployed app, with a service, a TLS-terminated route, and automatic DNS - in three commands.
+httpd テストページの HTML が表示されるはずです。サービス、TLS 終端された Route、および自動 DNS を備えたデプロイ済みアプリが、わずか 3 つのコマンドで完了しました。
 
-Clean up (runs in the background so we can move on):
+クリーンアップ（次の手順に進めるようにバックグラウンドで実行されます）：
 
 [source,bash,role="execute"]
 ----
 oc delete project quick-demo &>/dev/null & disown
 ----
 
-== Cluster Management
+== クラスター管理（Cluster Management）
 
-=== Nodes
+=== ノード
 
-Let's look at what you're running on:
+動作している基盤環境を確認してみましょう：
 
 [source,bash,role="execute"]
 ----
 oc get nodes
 ----
 
-Your environment uses a **compact cluster** - 3 nodes that serve as both control plane and worker:
+お使いの環境では**コンパクトクラスター**が使用されています。コントロールプレーンとワーカーの両方の役割を果たす 3 つのノードで構成されています：
 
 ----
 NAME                            STATUS   ROLES                         AGE   VERSION
@@ -321,143 +321,143 @@ control-plane-cluster-xxxxx-2   Ready    control-plane,master,worker   20h   v1.
 control-plane-cluster-xxxxx-3   Ready    control-plane,master,worker   20h   v1.33.6
 ----
 
-NOTE: Node names and count vary by deployment. Production clusters typically have separate control plane and worker nodes. This workshop uses a compact topology where all nodes serve both roles.
+NOTE: ノード名とノード数はデプロイメントによって異なります。本番環境のクラスターでは通常、独立したコントロールプレーンノードとワーカーノードが存在します。このワークショップでは、すべてのノードが両方の役割を果たすコンパクトなトポロジーを使用します。
 
-**Check Node Details (Console)**
+**ノードの詳細確認 (コンソール)**
 
-1. Navigate to **Compute → Nodes**
+1. **Compute → Nodes** に移動します
 +
 image::compute-nodes-menu.png[Compute menu showing Nodes option, link=self, window=blank]
 +
-2. Click on any node
-3. The **Overview** tab immediately shows you:
-   - **Status** - shows whether the node is healthy and flags any issues. On this workshop cluster you'll see overcommit warnings for CPU and memory - this means pod **limits** exceed the node's capacity, but that doesn't mean the node is in trouble. Check the **Utilization** section below to see actual usage vs available capacity. If actual usage is well within capacity, the overcommit is fine. You'll also see firing alerts - on a workshop cluster with many operators installed, this is expected.
+2. 任意のノードをクリックします
+3. **Overview** タブには、即座に以下が表示されます：
+   - **Status** - ノードが正常かを示し、問題があればフラグを立てます。このワークショップクラスターでは、CPU とメモリのオーバーコミットの警告が表示されます。これは、Pod の**リミット（制限）**がノードの容量を超えていることを意味しますが、ノードが問題に直面していることを意味するわけではありません。実際の使用量と利用可能な容量を比較するには、以下の **Utilization** セクションを確認してください。実際の使用量が容量内に十分収まっている場合は、オーバーコミットが発生していても問題ありません。また、発生中のアラートも表示されますが、多くのオペレーターがインストールされているワークショップクラスターでは、これは予期される動作です。
 +
-However, look at the **Utilization graphs** below - actual CPU and memory usage is well within capacity. The difference is important: **requests** (what's guaranteed) fit on the node, **limits** (what pods are allowed to burst to) don't. In practice, all pods bursting at once rarely happens, especially in a workshop environment. In production, you'd either right-size your limits, add nodes, or accept the overcommit if your workloads don't burst together.
-   - **Utilization graphs** - CPU, Memory, Filesystem, and Network over time. Compare "available" to actual usage - that tells you the real capacity story, not the theoretical limits.
-   - **Pod count** - how many pods are running on this node.
-4. Click the **Pods** tab to see every pod on that node with its CPU and memory usage.
+ただし、以下の **Utilization グラフ** を確認すると、実際の CPU およびメモリ使用率は容量内に十分収まっています。違いを理解することが重要です。**リクエスト（保証されるリソース）**はノードに収まっており、**リミット（Pod が一時的に拡大できる上限）**は収まっていません。実際には、すべての Pod が同時にリミットまでスパイクすることは、特にワークショップ環境ではめったにありません。本番環境では、リミットを適正サイズにするか、ノードを追加するか、ワークロードが同時にスパイクしないのであればオーバーコミットを容認するかのいずれかを選択します。
+   - **Utilization グラフ** - 時間経過に伴う CPU、メモリ、ファイルシステム、およびネットワーク。 「利用可能（available）」な容量と実際の使用量を比較することで、理論上の上限ではなく、実際の使用状況を把握できます。
+   - **Pod 数** - このノードで実行されている Pod の数。
+4. **Pods** タブをクリックすると、そのノード上のすべての Pod が、それぞれの CPU およびメモリ使用量とともに表示されます。
 
-Active alerts, utilization graphs, and per-pod resource usage are all in one console view - no SSH to nodes required.
+アクティブなアラート、使用率グラフ、Pod ごとのリソース使用量はすべて 1 つのコンソールビューに収まっており、ノードへの SSH 接続は不要です。
 
 image::nodes-console-view.png[Nodes Console View, link=self, window=blank]
-=== Infrastructure Management
+=== インフラストラクチャ管理
 
-**MachineSets - Automated Infrastructure Scaling**
+**MachineSet - 自動化されたインフラストラクチャのスケーリング**
 
-OpenShift uses **MachineSets** to automate infrastructure scaling. On cloud platforms (AWS, Azure, GCP), MachineSets manage worker nodes across availability zones - you can scale up by changing a replica count rather than manually provisioning machines.
+OpenShift は **MachineSet** を使用してインフラストラクチャのスケーリングを自動化します。クラウドプラットフォーム（AWS、Azure、GCP）では、MachineSet がアベイラビリティゾーン全体でワーカーノードを管理します。マシンを手動でプロビジョニングするのではなく、レプリカ数を変更するだけでスケールアップできます。
 
-NOTE: When ACM is installed, `machinesets` exists in two API groups (Cluster API and OpenShift Machine API). We use the full resource name `machinesets.machine.openshift.io` to target OpenShift's Machine API.
+NOTE: ACM がインストールされている場合、`machinesets` は 2 つの API グループ（Cluster API と OpenShift Machine API）に存在します。OpenShift の Machine API をターゲットにするには、完全なリソース名 `machinesets.machine.openshift.io` を使用します。
 
 [source,bash,role="execute"]
 ----
 oc get machinesets.machine.openshift.io -n openshift-machine-api
 ----
 
-Your compact cluster has a single MachineSet scaled to 0 - all 3 nodes serve as both control plane and worker, so no separate worker machines are needed:
+お使いのコンパクトクラスターには、0 にスケールされた単一の MachineSet が存在します。3 つのノードすべてがコントロールプレーンとワーカーの両方として機能するため、独立したワーカーマシンは不要です：
 
 ----
 NAME                           DESIRED   CURRENT   READY   AVAILABLE   AGE
 cluster-xxxxx-worker-0         0         0                             20h
 ----
 
-In a production cloud deployment, you'd see multiple MachineSets (one per availability zone) with active worker replicas that can be scaled up or down.
+本番のクラウドデプロイメントでは、スケールアップまたはスケールダウンが可能なアクティブなワーカーレプリカを持つ複数の MachineSet（アベイラビリティゾーンごとに1つ）が表示されます。
 
-You can see this in the console at **Compute -> MachineSets**:
+これはコンソールの **Compute -> MachineSets** で確認できます：
 
 image::machinesets-console.png[MachineSets view showing worker MachineSet with 0 of 0 machines on compact cluster, link=self, window=blank]
-In a production cluster, this view shows the machine count, instance type, CPU, and memory for each MachineSet - and you can scale directly from the console by editing the desired count.
+本番クラスターでは、このビューに各 MachineSet のマシン数、インスタンスタイプ、CPU、およびメモリが表示され、希望する数を編集することでコンソールから直接スケーリングできます。
 
-You can also view the machine resources:
+マシンリソースを表示することもできます：
 
 [source,bash,role="execute"]
 ----
 oc get machines.machine.openshift.io -n openshift-machine-api
 ----
 
-This shows the underlying compute instances that OpenShift is managing.
+これにより、OpenShift が管理している基礎となるコンピュートインスタンスが表示されます。
 
-=== Scaling Workers
+=== ワーカーのスケーリング
 
-To add another worker node, simply scale the MachineSet:
+別のワーカーノードを追加するには、MachineSet をスケーリングするだけです：
 
-WARNING: Do not run this command - it is shown as an example only. This workshop environment does not have spare hosts available for scaling.
+WARNING: このコマンドは実行しないでください。例として示されているだけです。このワークショップ環境には、スケーリングに使用できる予備のホストがありません。
 
 [source,bash]
 ----
-# Example - scales a zone from 0 to 1 worker
+# 例 - ゾーンのワーカーを 0 から 1 にスケーリング
 oc scale machineset.machine.openshift.io <machineset-name> --replicas=1 -n openshift-machine-api
 ----
 
-OpenShift automatically provisions a compute instance, configures it, and joins it to the cluster - one command to scale your infrastructure.
+OpenShift はコンピュートインスタンスを自動的にプロビジョニングして構成し、クラスターに参加させます。インフラストラクチャをスケーリングするための単一のコマンドです。
 
-NOTE: This workshop environment runs on bare metal without spare hosts available, so scaling is shown as an example rather than a live exercise. On cloud platforms (AWS, Azure, GCP), the Machine API provisions new instances automatically.
+NOTE: このワークショップ環境は予備ホストのないベアメタル上で動作しているため、スケーリングはライブの演習ではなく例として示されています。クラウドプラットフォーム（AWS、Azure、GCP）では、Machine API が新しいインスタンスを自動的にプロビジョニングします。
 
-=== Over-the-Air Upgrades
+=== Over-the-Air アップグレード
 
-Check the cluster version:
+クラスターのバージョンを確認します：
 
 [source,bash,role="execute"]
 ----
 oc get clusterversion
 ----
 
-Output:
+出力：
 
 ----
 NAME      VERSION   AVAILABLE   PROGRESSING   SINCE   STATUS
 version   4.x       True        False         32m     Cluster version is 4.x
 ----
 
-**View Available Upgrades (Console)**
+**利用可能なアップグレードの表示 (コンソール)**
 
-1. Navigate to **Administration → Cluster Settings**
+1. **Administration → Cluster Settings** に移動します
 +
 image::cluster-settings-details.png[Cluster Settings Details Tab, link=self, window=blank]
 +
-2. Click **Select a version** button (if available)
-3. See available upgrade paths
+2. （利用可能な場合は） **Select a version** ボタンをクリックします
+3. 利用可能なアップグレードパスを確認します
 
-NOTE: If your cluster shows **Update status: Up to date**, the **Select a version** button will not appear. This means your cluster is already running the latest available version in its update channel.
+NOTE: クラスターに **Update status: Up to date**（アップデートステータス：最新）と表示されている場合、**Select a version** ボタンは表示されません。これは、クラスターがそのアップデートチャネルで利用可能な最新バージョンをすでに実行していることを意味します。
 
 image::cluster-upgrade-versions.png[Available Upgrade Versions,width=600, link=self, window=blank]
-OpenShift handles upgrades automatically:
+OpenShift はアップグレードを自動的に処理します：
 
-- Rolling upgrades of control plane
-- Automated worker node updates
-- Zero-downtime upgrades
+- コントロールプレーンのローリングアップグレード
+- ワーカーノードの自動更新
+- ゼロダウンタイムでのアップグレード
 
-=== Operator Ecosystem
+=== オペレーターエコシステム
 
-Need to add something to the cluster? See how many operators are available right now:
+クラスターに何かを追加する必要がありますか？現在利用可能なオペレーターの数を確認してみましょう：
 
 [source,bash,role="execute"]
 ----
 oc get packagemanifests -n openshift-marketplace | wc -l
 ----
 
-Hundreds of operators ready to install - a mix of Red Hat, certified partner, and community options.
+Red Hat、認定パートナー、コミュニティのオプションが混ざり合った何百ものオペレーターがすぐにインストールできる状態になっています。
 
-**Explore Software Catalog (Console)**
+**ソフトウェアカタログの探索 (コンソール)**
 
-1. Navigate to **Ecosystem → Software Catalog**
-2. You may need to select a project from the dropdown - if one is not already selected, choose **default**
-3. You'll see the unified software catalog with categories on the left:
-   - **AI/Machine Learning** - Red Hat OpenShift AI, Open Data Hub
-   - **CI/CD** - Red Hat OpenShift GitOps, Red Hat OpenShift Pipelines
+1. **Ecosystem → Software Catalog** に移動します
+2. ドロップダウンからプロジェクトを選択する必要がある場合があります。まだ選択されていない場合は、**default** を選択してください
+3. 左側にカテゴリが配置された統合ソフトウェアカタログが表示されます：
+   - **AI/Machine Learning** - Red Hat OpenShift AI、Open Data Hub
+   - **CI/CD** - Red Hat OpenShift GitOps、Red Hat OpenShift Pipelines
    - **Database** - Red Hat AMQ Streams (Kafka)
    - **Security** - Red Hat Advanced Cluster Security
    - **Storage** - Red Hat OpenShift Data Foundation
-   - **Integration & Delivery** - Red Hat Integration, Red Hat Service Mesh, Red Hat Serverless
-   - And many more...
-4. Filter by **Type** and select **Operators** to see the full list of available operators
-5. Feel free to click any operator tile to browse its details - this is just for exploration, no need to install anything
+   - **Integration & Delivery** - Red Hat Integration、Red Hat Service Mesh、Red Hat Serverless
+   - その他多数...
+4. **Type** でフィルタリングし、**Operators** を選択して、利用可能なオペレーターの完全なリストを表示します
+5. 任意のオペレータータイルをクリックして詳細を参照してみてください。これは探索目的ですので、何もインストールする必要はありません
 
 image::software-catalog-operators.png[Software Catalog filtered to Operators showing available operator tiles, link=self, window=blank]
-Browse the tiles, click into anything that looks interesting - this is your cluster, explore it.
+タイルを参照し、興味のあるものをクリックしてみてください。これはあなたのクラスターですので、自由に探索してください。
 
-== What's Next
+== 次のステップ（What's Next）
 
-You've seen what's running out of the box - monitoring, registry, routing, node management, upgrades, and a catalog of operators ready to install. None of it required setup.
+モニタリング、レジストリ、ルーティング、ノード管理、アップグレード、すぐにインストールできるオペレーターのカタログなど、初期状態（Out-of-the-box）で稼働しているものを確認しました。いずれもセットアップを必要としませんでした。
 
-The rest of this workshop goes deeper. Select the next module from the navigation to start working with it hands-on.
+このワークショップの残りの部分では、さらに深く掘り下げていきます。ナビゲーションから次のモジュールを選択して、ハンズオンで作業を開始してください。
