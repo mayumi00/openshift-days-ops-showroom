@@ -92,3 +92,347 @@ RHACS を使用すると、CNCF がサポートする Kubernetes 環境全体で
 .手順
 . 下のコマンドをクリックして実行します。
 +
+[source,bash,subs="+macros,+attributes",role=execute]
+----
+oc apply -f - <<EOF
+---
+apiVersion: config.openshift.io/v1
+kind: Image
+metadata:
+  name: cluster
+spec:
+  registrySources:
+    allowedRegistries:
+      - quay.io
+      - registry.redhat.io
+      - registry.access.redhat.com
+      - image-registry.openshift-image-registry.svc:5000
+      - gcr.io
+      - docker.io
+EOF
+----
++
+. 変更が受け入れられたことを確認します。
++
+[source,bash,subs="+macros,+attributes",role=execute]
+----
+oc get image.config.openshift.io/cluster -o yaml | grep allowedRegistries -A 10
+----
++
+**出力**
+[source,bash,subs="+macros,+attributes"]
+----
+    allowedRegistries:
+    - quay.io
+    - registry.redhat.io
+    - registry.access.redhat.com
+    - image-registry.openshift-image-registry.svc:5000
+    - gcr.io
+    - docker.io
+status:
+  internalRegistryHostname: image-registry.openshift-image-registry.svc:5000
+----
+
+素晴らしい！これで、ローカルクラスターのコンプライアンスチェックをセットアップできます。
+
+=== コンプライアンススキャンのセットアップ
+
+コンプライアンススキャンをセットアップするには、以下の手順に従ってください。
+
+.手順
+. ワークショップパネルの *RHACS* タブに移動し、*Compliance* → *OpenShift Schedules* タブをクリックします。
++
+image::acs-security-01.png[RHACS Compliance OpenShift Schedules tab, link=self, window=blank, width=100%]
+
+. 次に、*Create scan schedule* をクリックします。
++
+image::acs-security-02.png[Create scan schedule dialog, link=self, window=blank, width=100%]
+
+. 次に、フォームに以下の情報を入力します。
+* *Name*:
++
+[source,sh,subs="attributes",role="copypaste"]
+----
+acs-catch-all
+----
+* *Description*:
++
+[source,sh,subs="attributes",role="copypaste"]
+----
+Daily compliance scan for all profiles covering CIS, E8, Moderate, NERC-CIP, PCI-DSS, and STIG standards.
+----
+* *Frequency*: `Daily`
+* *Time*: 00:00 UTC
+
+. *Next* をクリックします。
+. クラスターを選択します: *production*
+. *Next* をクリックします。
+. 以下のプロファイルを追加します:
+* `ocp4-cis` 
+* `ocp4-e8` 
+* `ocp4-nerc-cip`
+* `ocp4-pci-dss` 
+* `ocp4-stig` 
+
+[NOTE]
+====
+ 選択できるプロファイルは多数ありますが、ここではほとんどの組織で使用されている最も一般的なプロファイルを選択しています。ラボに必要なプロファイルのみを追加したい場合は、`ocp4-cis` と `ocp4-e8` のみを選択してください。
+====
+
+[start=8]
+. *Next* をクリックします。
++
+[NOTE]
+====
+電子メールで通知を送信したり、API 経由で詳細を取得したり、コンソール経由でレポートをダウンロードしたりできます。ただし、配信先は追加しないため、このステップはスキップします。
+====
++
+. *Next* をクリックします。
+. 作成した内容を確認し、*Save* をクリックします。
+. スキャンが自動的に開始されます。開始されない場合は、スケジュールに関連付けられたメニュー（3つの点）を使用して、いつでも *Run scan* を選択して手動スキャンをトリガーできます。
++
+image::acs-security-03.png[Scan schedule menu with Run scan option, link=self, window=blank, width=100%]
++
+image::acs-security-04.png[Compliance scan running, link=self, window=blank, width=100%]
++
+NOTE: スキャンの完了には数分かかる場合があります。スキャンステータスが更新されない場合は、RHACS コンソールの別のセクションをクリックしてから戻り、ビューを更新してください。
++
+. OpenShift のカバレッジセクションに移動し、スキャンのすべての詳細を表示できます。*Compliance* → *OpenShift Coverage* → *E8* タブをクリックして結果を表示します。
++
+image::acs-security-05.png[E8 compliance standard overview, link=self, window=blank, width=100%]
++
+[NOTE]
+====
+クラスター構成に許可されたレジストリを追加することで、production クラスターのチェックに合格したことを思い出してください。
+====
+. 下にスクロールして、合格している標準 `ocp4-e8-ocp-allowed-registries` をクリックし、チェックの詳細を確認してみましょう。
++
+image::acs-security-06.png[Allowed registries compliance clusters, link=self, window=blank, width=100%]
++
+[NOTE]
+====
+このビューには、すべてのクラスターとこのチェックに関するステータスが表示されます。ご覧のとおり、production クラスターは合格しています。
+====
++
+. *Details* タブをクリックして、コンプライアンスチェックの説明、根拠、および修復方法を表示します。
++
+image::acs-security-07.png[Allowed registries compliance check details, link=self, window=blank, width=100%]
++
+[NOTE]
+====
+このビューには、production クラスターのチェックの詳細が表示されます。ご覧のとおり、production クラスターは合格しています。
+====
++
+. 検証ステップを実行して、チェックに合格していることを確認できます。
+
++
+[source,sh,subs="attributes",role=execute]
+----
+oc get image.config.openshift.io cluster -o jsonpath='{.spec.registrySources.allowedRegistries}'
+----
+
+image::https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcHI1ZGQwYWNnd3doY2s4MDNpenZ1MWlzeDlqNWhyNzF5c2JveWNybSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/xTQXENNW77nUsNVmV4/giphy.gif[Fun celebration, link=self, window=blank, width=400]
+
+**素晴らしい仕事です！** コンプライアンスの報告は大変な作業になりがちです。RHACS と OpenShift は、チームが地域を超えた監査やコンプライアンスチェックに簡単に合格できるようにサポートします。
+
+== 実行時セキュリティと不変なワークロード
+
+本番の Kubernetes 環境では、セキュリティのためにクラスター内部で何が実行されているかを厳重に制御することが不可欠です。ファイルの整合性と異常な動作を監視することで、承認されたイメージや構成からのドリフト（乖離）を検出できます。
+
+RHACS には、未承認のアクセス試行、永続的な脅威、横方向の移動（ラテラルムーブメント）、ファイルの不整合違反などのリスクの高い動作を検出してブロックするビジュアルポリシーが組み込まれています。これらのポリシーは、不変コンテナの原則（コンテナは予期しない変更なしに、承認した内容のみを正確に実行する必要がある）を強制するのに役立ちます。
+
+== Policy-as-Code を使用して実行時の異常な動作をブロックする
+
+apt、apk、yum、dnf などのパッケージマネージャーは仮想マシンでは便利ですが、本番コンテナでは不要です。これらを許可すると、無制御なソフトウェアのインストールが可能になり、クラスター内の攻撃表面が拡大し、本番ワークロードにおけるコアな期待事項である監査可能性と不可変性が損なわれます。
+
+*Policy-as-Code は、クラスター全体でこの保護をスケーリングするための効果的な方法です。*
+
+Policy-as-Code を使用して実行時の異常な動作をブロックする方法の例を見てみましょう。
+
+.手順
+. *ターミナルに以下のポリシー構成を適用します*。パッケージマネージャーの実行に対する実行時保護を強制するセキュリティポリシーが作成されます。
++
+[source,bash,subs="+macros,+attributes",role=execute]
+----
+oc apply -f - <<EOF
+---
+apiVersion: config.stackrox.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: alpine-linux-package-manager-execution-patient-portal-enforcement
+  namespace: stackrox
+spec:
+  policyName: Alpine Linux Package Manager Execution - Patient-Portal Enforcement
+  description: Alert when the Alpine Linux package manager (apk) is executed at runtime
+  rationale: Use of package managers at runtime indicates that new software may be being introduced into containers while they are running.
+  remediation: Run 'apk --purge del apk-tools' in the image build for production containers. Change applications to no longer use package managers at runtime, if applicable.
+  categories:
+    - Anomalous Activity
+    - Package Management
+  lifecycleStages:
+    - RUNTIME
+  eventSource: DEPLOYMENT_EVENT
+  severity: LOW_SEVERITY
+  enforcementActions:
+    - FAIL_KUBE_REQUEST_ENFORCEMENT
+    - KILL_POD_ENFORCEMENT
+  policySections:
+    - policyGroups:
+        - fieldName: Process Name
+          booleanOperator: OR
+          values:
+            - value: apk
+            - value: apk-tools
+            - value: apk update
+            - value: apk add
+            - value: apk remove
+            - value: apk upgrade
+            - value: apk del
+            - value: apk cache
+            - value: apk clean
+            - value: apk info
+            - value: apk show
+            - value: apk version
+  mitreAttackVectors:
+    - tactic: TA0011
+      techniques:
+        - T1105
+  criteriaLocked: false
+  mitreVectorsLocked: false
+  isDefault: false
+EOF
+----
++
+====
+次に、`tmux` を使用してテストの実行中に OpenShift イベントを監視し、RHACS が実行時にポリシーを強制する方法を確認します。
+====
++
+. ターミナルから、2つのペインで tmux を起動します。
++
+[source,sh,role=execute]
+----
+tmux new-session \; split-window -v \; attach
+----
++
+. 次に、最初のシェルペインで OpenShift イベントの監視を実行します。
++
+[source,sh,role=execute]
+----
+oc get events -n patient-portal -w
+----
++
+. *Ctrl+b, o* を押して、次のペインに切り替えます。（Ctrl+b の後に o）
++
+[IMPORTANT]
+====
+`Ctrl+b` は tmux のプレフィックスキーです。`o` は次のペインに切り替えるコマンドです。
+====
++
+. Pod の詳細を取得し、以下のコマンドに追加して、*patient-frontend* アプリケーションで exec を実行します。
++
+[source,sh,role=execute]
+----
+POD=$(oc get pod -n patient-portal -l app=frontend -o jsonpath="{.items[0].metadata.name}")
+oc exec -n patient-portal $POD -i --tty -- /bin/sh
+----
++
+.出力例
+[source,bash]
+----
+[demo-user@bastion ~]$ POD=$(oc get pod -n patient-portal -l app=frontend -o jsonpath="{.items[0].metadata.name}")
+oc exec -n patient-portal $POD -i --tty -- /bin/sh
+/home/fritz $
+----
++
+. このシェルで Alpine パッケージマネージャーを実行します。
++
+[source,sh,role=execute]
+----
+apk update
+----
++
+. 出力を確認し、パッケージマネージャーが更新操作を実行しようとすることを確認します。
++
+[source,texinfo,subs="attributes"]
+----
+/home/fritz $ apk update
+ERROR: Unable to lock database: Permission denied
+ERROR: Failed to open apk database: Permission denied
+/home/fritz $ command terminated with exit code 137
+[demo-user@bastion ~]$
+----
++
+NOTE: *Unable to lock database: Permission denied* と表示されるのは正常です。これは、Pod セキュリティポリシーのおかげで、OpenShift が Pod の sudo 動作をブロックしているためです。
++
+. oc get events の tmux ペイン（下のペイン）を確認し、RHACS がパッケージマネージャーの呼び出しを検出し、Pod を削除したことを示す内容に注目します。
++
+[source,texinfo,subs="attributes"]
+----
+^C^C[demo-user@bastion ~]$ oc get events -n patient-portal -w
+LAST SEEN   TYPE      REASON                 OBJECT                           MESSAGE
+50s         Normal    Killing                pod/frontend-8667d5c56b-f9fcj    Stopping container frontend
+50s         Normal    Scheduled              pod/frontend-8667d5c56b-s6dph    Successfully assigned patient-portal/frontend-8667d5c56b-s6dph to ip-10-0-61-109.us-east-2.compute.internal
+49s         Normal    Created                pod/frontend-8667d5c56b-s6dph    Created container frontend
+49s         Normal    Started                pod/frontend-8667d5c56b-s6dph    Started container frontend
+50s         Normal    SuccessfulCreate       replicaset/frontend-8667d5c56b   Created pod: frontend-8667d5c56b-s6dph
+50s         Warning   StackRox enforcement   deployment/frontend              A pod (frontend-8667d5c56b-f9fcj) violated StackRox policy "Alpine Linux Package Manager Execution - Enforce" and was killed
+----
++
+[NOTE]
+====
+数秒後、Pod が削除され再作成されるのが確認できます。tmux シェルペインで、シェルセッションが終了し、Bastion VM のコマンドラインに戻っていることに注目してください。
+====
++
+. tmux セッションを終了し、バスティオンホストのターミナルに戻ります。
+.. コンテナシェル内にまだいる場合は、`exit` と入力してコンテナを終了します。
+.. `Ctrl+C` を押して、tmux ペインで実行されている `watch` コマンドを停止します。
+.. `exit` と入力するか `Ctrl-D` を押して tmux セッションを終了し、バスティオンホストのターミナルに戻ります。
++
+[NOTE]
+====
+ポリシーによって動作がブロックされていることが確認できますが、セキュリティチームはこの動作を認識し、なぜ発生しているのかを調査する必要があります。
+====
+
+（重大な障害を引き起こす可能性のある）更新の実行を自分自身で阻止することに成功しました！ただし、アラートが発生しトリアージを行う必要があるため、セキュリティ調査プロセスは継続します。
+
+[[violations-reporting-audit-compliance]]
+== 監査およびコンプライアンスのための違反とレポート
+
+イベント監査はセキュリティのベストプラクティスをサポートし、ポリシーが実行されたときに何が起こったかの明確な記録をチームに提供します。RHACS は、各違反のフォレンジック詳細をキャプチャするため、自信を持ってポリシーの調査、報告、およびチューニングを行うことができます。
+
+*手順*
+
+. ブラウザで RHACS コンソールに戻り、*Violations* ページに移動します。
+. ポリシー違反の *Policy*、*Name*、`r/alpine` または最新のポリシー違反（時間順）でフィルタリングします。強制適用されたポリシー違反が表示されます。
++
+image::acs-security-08.png[RHACS Violations list filtered by policy, link=self, window=blank, width=100%]
++
+. *Alpine Linux Package Manager Execution - Patient-Portal Enforcement* をクリックして詳細を表示します。
++
+image::acs-security-09.png[RHACS violation detail for package manager policy, link=self, window=blank, width=100%]
++
+[IMPORTANT]
+====
+適切に設定されている場合、各違反記録は Security Information and Event Management (SIEM) アプリケーションにプッシュされ、API 経由で取得できます。タイムスタンプ、プロセスユーザー ID、プロセス引数、プロセスプロセッサ、および適用アクションなど、UI に表示されるフォレンジックデータが記録されます。
+====
+
+=== クリーンアップ
+
+.手順
+. ターミナルで次のコマンドを実行して、このモジュールで作成したデモアプリケーションと ACS の変更をクリーンアップします。
++
+[source,bash,subs="+macros,+attributes",role=execute]
+----
+cd ~/demo-applications
+oc delete -f k8s-deployment-manifests/emojivoto --recursive
+oc delete -f k8s-deployment-manifests/apache-struts --recursive
+oc delete -f k8s-deployment-manifests/dvwa --recursive
+oc delete -f k8s-deployment-manifests/log4shell --recursive
+oc delete -f skupper-demo/ --recursive
+oc patch image.config.openshift.io cluster --type=json -p='[{"op":"remove","path":"/spec/registrySources"}]'
+oc delete securitypolicy --all -n stackrox --ignore-not-found
+----
+
+image::https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3ODhkZThkZXVxb2twdHloazAzc2VhNWJpeWowenRpeTJoczY3MTAyZyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/RIjVnmAtOD4l4c2Ert/giphy.gif[Fun celebration, link=self, window=blank, width=400]
+
+**素晴らしい仕事です！** お疲れ様でした。RHACS の基本をご確認いただきありがとうございます。準備ができたら、左側のナビゲーションから次のモジュールに進むことができます。
