@@ -1,9 +1,9 @@
-= デバッグとトラブルシューティング（Debugging & Troubleshooting）
+= デバッグとトラブルシューティング
 :page-toclevels: 1
 
-== はじめに（Getting Started）
+== はじめに
 
-=== モジュールの概要（Module Overview）
+=== モジュールの概要
 
 **所要時間:** 10〜15 分 +
 **形式:** ハンズオンラボ - リアルな問題解決 +
@@ -13,7 +13,7 @@ include::partial$console-access.adoc[]
 
 お使いのクラスターでは、複数のマイクロサービスで構成されたお天気アプリケーションが稼働しています。しかし、そのうちのいくつかが故障してしまいました。あなたの仕事は、それぞれの問題を診断して修正することです。これらは、実際のサポートチケットで発生するような問題と同じ種類のリソース障害です。
 
-=== 学習目標（Learning Objectives）
+=== 学習目標
 
 このモジュールを完了すると、以下のことができるようになります：
 
@@ -21,7 +21,7 @@ include::partial$console-access.adoc[]
 * ImagePullBackOff、CrashLoopBackOff、ConfigMap エラー、リソース制限の違反、Service ルーティングの問題、および SCC パーミッションの失敗を修正する
 * 「観察 (Observe) → 診断 (Diagnose) → 修正 (Fix) → 検証 (Verify)」のワークフローを活用する
 
-=== 診断ツールキット（Your Diagnostic Toolkit）
+=== 診断ツールキット
 
 これらは常に使用することになるコマンドです：
 
@@ -41,7 +41,7 @@ oc logs <pod-name> -n <namespace> --previous
 oc describe deployment <deployment-name> -n <namespace>
 ----
 
-== 故障したアプリケーションのデプロイ（Deploy the Broken Applications）
+== 故障したアプリケーションのデプロイ
 
 まず、ネームスペースを作成し、意図的に破壊されたアプリケーションをデプロイします：
 
@@ -50,7 +50,7 @@ oc describe deployment <deployment-name> -n <namespace>
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/05-debugging/deploy-broken-apps.sh)
 ----
 
-=== 故障内容の確認（See What's Broken）
+=== 故障内容の確認
 
 意図的な誤設定を含む 6 つのマイクロサービスがデプロイされました。損害を仕分け（トリアージ）してみましょう。
 
@@ -76,7 +76,7 @@ NOTE: Pod リストに `weather-cache` が存在しないことに気づくか�
 
 **あなたのミッション:** 6 つすべてを修正すること。
 
-== 障害の修正（Fix the Problems）
+== 障害の修正
 
 === 問題 1: ImagePullBackOff (weather-frontend)
 
@@ -416,9 +416,9 @@ oc logs deployment/weather-db -n debug-lab
 
 **まとめ:** コンテナログに `Permission denied` と表示された場合は、`oc get pod -o jsonpath='{.metadata.annotations.openshift\.io/scc}'` で SCC を確認します。`restricted-v2` では、コンテナはランダムな UID として実行され、root 所有のディレクトリには書き込めません。書き込み可能なパスには `emptyDir` ボリュームを使用するか、非 root として実行するように設計されたイメージを使用します。
 
-== クイックリファレンス（Quick Reference）
+== クイックリファレンス
 
-=== 全問題の修復完了（All Fixed）
+=== 全問題の修復完了
 
 **OCP Console** タブに切り替えます - **Workloads -> Pods**（プロジェクト: `debug-lab`）。6 つの Pod すべてが緑色の `Running` ステータスを表示しているはずです。最初に見た赤/オレンジ/黄色のビューと比較してください。この視覚的な変化こそが、実際のトラブルシューティングワークフローの成果です。
 
@@ -442,7 +442,7 @@ weather-frontend-xxxxx              1/1     Running   0          1m
 weather-proxy-xxxxx                 1/1     Running   0          5m
 ----
 
-=== 動作の確認（See It Working）
+=== 動作の確認
 
 6 つのマイクロサービスすべてが修復されたので、これらを公開してお天気アプリを開きます：
 
@@ -456,7 +456,7 @@ bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showr
 NOTE: 初回ロード時にページにエラーが表示された場合は、数秒待ってからリフレッシュしてください。サービスがまだ起動中である可能性があります。
 
 image::debugging-weather-app.png[The Weather App showing live weather data with all six microservices healthy, link=self, window=blank]
-=== クイックリファレンス（Quick Reference）
+=== クイックリファレンス
 
 [cols="1,2,2"]
 |===
@@ -495,9 +495,9 @@ image::debugging-weather-app.png[The Weather App showing live weather data with 
 |`oc describe pvc` → Events → StorageClass 名/存在を確認
 |===
 
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
-=== まとめ（Summary）
+=== まとめ
 
 OpenShift における 6 つの一般的な問題を診断および修正しました：
 
@@ -510,7 +510,7 @@ OpenShift における 6 つの一般的な問題を診断および修正しま�
 
 パターンは常に同じです：**「ステータス確認 → Pod/ReplicaSet の詳細 (describe) → ログ/イベントの確認 → 修正 → 検証」**
 
-=== クリーンアップ（Cleanup）
+=== クリーンアップ
 
 [source,bash,role="execute"]
 ----
