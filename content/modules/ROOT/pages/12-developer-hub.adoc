@@ -1,207 +1,207 @@
-= Developer Hub - Portal Operations
+= Developer Hub - ポータル運用 (Developer Hub - Portal Operations)
 
-**Duration:** 25-30 minutes +
-**Format:** Guided exploration + Hands-on
+**所要時間:** 25-30 分 +
+**形式:** ガイド付き探索 + ハンズオン
 
 include::partial$console-access.adoc[]
 
-== The Problem
+== 課題 (The Problem)
 
-How many times a week does someone message you: _"Is my app running?"_ or _"Can you create a namespace for me?"_
+週に何回、誰かから _「私のアプリは動いていますか？」_ や _「ネームスペースを作成してもらえますか？」_ といったメッセージが届きますか？
 
-Red Hat Developer Hub (RHDH) is a developer portal based on Backstage. Your platform engineering team has deployed it for this organization, and it's already in use by multiple teams. As an ops admin, you need to understand what it does, what developers see when they use it, and how the pieces fit together so you can support it.
+Red Hat Developer Hub (RHDH) は Backstage をベースにした開発者ポータルです。プラットフォームエンジニアリングチームがこの組織向けにデプロイし、すでに複数のチームによって利用されています。運用管理者として、サポートを提供するためには、RHDH が何をするものか、開発者が使用するときに何を目にするのか、そして各コンポーネントがどのように連携しているのかを理解する必要があります。
 
-RHDH gives your organization:
+RHDH は組織に以下を提供します：
 
-* **Software Catalog** - a single place where every service, API, and library is registered. Developers find what exists, who owns it, and what state it's in - without asking you.
-* **Software Templates** - self-service workflows that provision namespaces and resources using patterns the platform team defines. Developers get what they need without filing a ticket.
-* **Plugins** - connect the catalog to live systems (Kubernetes, ArgoCD, Tekton, etc.) so developers see real-time status without needing cluster access.
+* **ソフトウェアカタログ (Software Catalog)** - すべてのサービス、API、ライブラリが登録される単一の場所。開発者は、あなたに質問することなく、存在するリソース、その所有者、およびその状態を確認できます。
+* **ソフトウェアテンプレート (Software Templates)** - プラットフォームチームが定義したパターンを使用してネームスペースとリソースをプロビジョニングするセルフサービスワークフロー。開発者はチケットを発行することなく、必要なものを入手できます。
+* **プラグイン (Plugins)** - カタログをライブシステム (Kubernetes、ArgoCD、Tekton など) に接続し、開発者がクラスターへのアクセス権を必要とせずにリアルタイムのステータスを確認できるようにします。
 
-In this module you'll explore a live Developer Hub that multiple teams are already using, see what developers see, watch a self-service template in action, and wire up a new service - the kind of task that lands on your desk when a team onboards.
+このモジュールでは、複数のチームがすでに利用している稼働中の Developer Hub を探索し、開発者に見えるものを確認し、セルフサービステンプレートの動作を観察し、新しいサービスを連携させます。これは、新しいチームがオンボーディングする際にあなたのデスクに届くタスクと同じ種類の内容です。
 
 image::diagrams/12_devhub.png[Red Hat Developer Hub Architecture, 400, align=center, link=self, window=blank]
-== Explore the Developer Portal
+== 開発者ポータルの探索 (Explore the Developer Portal)
 
-=== Step 1: Access Developer Hub
+=== ステップ 1: Developer Hub へのアクセス
 
-Click the **Developer Hub** tab at the top of Showroom. You'll see the login page - select **Guest** and click **Enter**.
+Showroom の上部にある **Developer Hub** タブをクリックします。ログインページが表示されたら、**Guest** を選択して **Enter** をクリックします。
 
 image::rhdh-home-page.png[Developer Hub home page, link=self, window=blank]
-TIP: You may see a **"Let's get you started with Developer Hub"** panel on the right side with steps like "Set up authentication" and "Configure RBAC". This is a setup wizard aimed at platform engineers - click **Hide** at the bottom of that panel to dismiss it.
+TIP: 右側に「認証のセットアップ」や「RBAC の構成」などの手順が書かれた **"Let's get you started with Developer Hub"** パネルが表示される場合があります。これはプラットフォームエンジニア向けのセットアップウィザードです。パネルの下部にある **Hide** をクリックして閉じてください。
 
-=== Step 2: Browse the Software Catalog
+=== ステップ 2: ソフトウェアカタログの参照
 
-Click **Catalog** in the left navigation. You'll see services registered by several teams across your organization:
+左側のナビゲーションで **Catalog** をクリックします。組織内のいくつかのチームによって登録されたサービスが表示されます：
 
 [cols="2,2,1,1"]
 |===
-|Service |Description |Team |Status
+|サービス |説明 |チーム |ステータス
 
 |`weather-app`
-|Weather microservices (5 deployments)
+|お天気マイクロサービス (5つのデプロイメント)
 |ops-team
 |Production
 
 |`payments-platform`
-|Payment processing (3 deployments)
+|決済処理 (3つのデプロイメント)
 |payments-team
 |Production
 
 |`inventory-system`
-|Inventory tracking (3 deployments)
+|在庫追跡 (3つのデプロイメント)
 |inventory-team
 |Production
 
 |`notification-service`
-|Centralized alerts
+|中央集中型アラート
 |platform-team
 |Production
 
 |`order-tracker`
-|Order tracking (not yet deployed)
+|注文追跡 (未デプロイ)
 |inventory-team
 |Development
 
 |`backup-demo-app`
-|OADP-protected application
+|OADP保護アプリケーション
 |ops-team
 |Production
 |===
 
 image::rhdh-catalog-all-components.png[Developer Hub catalog showing 6 components across 4 teams, link=self, window=blank]
-This is what replaces the _"who owns this workload?"_ question. Every service has an owner, a lifecycle stage, and metadata connecting it to the cluster. When a team leaves or a service is deprecated, it's visible here instead of becoming an orphaned mystery workload.
+これが _「このワークロードは誰が所有しているのか？」_ という疑問に代わるものです。すべてのサービスには所有者、ライフサイクルステージ、およびクラスターに接続するメタデータが存在します。チームが離脱したりサービスが廃止されたりしても、所有者不明の謎のワークロードになるのではなく、ここで可視化された状態が維持されます。
 
-=== Step 3: Use the Catalog as an Ops Tool
+=== ステップ 3: 運用ツールとしてのカタログの利用
 
-The catalog isn't just a list - it's a searchable, filterable inventory. Try using the filters on the left sidebar. If you don't see the filter options, click the filter icon or expand your browser window wider.
+カタログは単なるリストではなく、検索やフィルタリングが可能なインベントリです。左側のサイドバーにあるフィルターを使ってみてください。フィルターオプションが表示されない場合は、フィルターアイコンをクリックするか、ブラウザウィンドウを大きく広げてください。
 
-* **Owner** dropdown - select `payments-team`. The catalog narrows to just their service. _"The security team needs a list of everything the payments team runs."_ Done in two clicks.
+* **Owner** ドロップダウン - `payments-team` を選択します。カタログがそのチームのサービスのみに絞り込まれます。_「セキュリティチームが決済チームの実行している全リストを必要としている」_ 場合も、2クリックで完了します。
 
 image::rhdh-catalog-filtered-payments.png[Catalog filtered by payments-team showing PCI-tagged service, link=self, window=blank]
-* Clear the owner filter, then try **Tags** - search for `pci`. You'll find `payments-platform` tagged for PCI compliance. _"Which services fall under PCI audit scope?"_ One filter.
+* 所有者フィルターを解除し、次に **Tags** を試してみます - `pci` を検索します。PCIコンプライアンスのタグが付いた `payments-platform` が見つかります。_「PCI監査の範囲に入るサービスはどれか？」_ も、フィルター1つで解決します。
 
 image::rhdh-filter-tags-pci.png[Tags filter with pci selected, link=self, window=blank]
-* Try **Lifecycle** - filter for `development`. You'll see `order-tracker` - the only service not yet in production.
+* **Lifecycle** を試してみます - `development` でフィルタリングします。まだ本番稼働していない唯一のサービスである `order-tracker` が表示されます。
 
 image::rhdh-filter-lifecycle-development.png[Lifecycle filter showing development selected, link=self, window=blank]
-In a real organization with hundreds of services, these filters are how you answer questions that used to require searching through namespaces, Slack threads, or tribal knowledge.
+何百ものサービスが存在する実際の組織では、以前ならネームスペースの検索や Slack スレッドの確認、あるいは属人的な知識を頼る必要があった質問に対し、これらのフィルターを使って回答を得ることができます。
 
-=== Step 4: See Live Kubernetes Data
+=== ステップ 4: ライブ Kubernetes データの確認
 
-Clear any filters and click on **payments-platform** in the catalog. You'll see the component overview page with owner, lifecycle, and tags.
+フィルターを解除し、カタログ内の **payments-platform** をクリックします。所有者、ライフサイクル、およびタグが表示されたコンポーネント概要ページが表示されます。
 
-Now click the **Kubernetes** tab.
+ここで **Kubernetes** タブをクリックします。
 
 image::rhdh-payments-kubernetes-3pods.png[Kubernetes tab showing 3 pods for payments-platform, link=self, window=blank]
-You should see 3 pods running - `payments-api`, `payments-processor`, and `payments-gateway` - with their status, restarts, and age. This data is live from the cluster.
+`payments-api`、`payments-processor`、`payments-gateway` の 3 つの Pod が、ステータス、再起動回数、経過時間とともに実行中であることが確認できるはずです。このデータはクラスターからリアルタイムで取得されています。
 
-NOTE: You may see "pods with errors" flagged at the top - this is Developer Hub reporting any pods with a restart count of 1 or more. On a workshop cluster this is normal (pods may have restarted during initial provisioning) and doesn't indicate an actual problem.
+NOTE: 上部に「エラーのある Pod (pods with errors)」というフラグが表示される場合があります。これは Developer Hub が再起動回数が 1 以上の Pod を報告しているためです。ワークショップクラスターではこれは正常であり (初期プロビジョニング中に Pod が再起動した可能性があります)、実際の問題を示すものではありません。
 
-**This is the key.** A developer clicks their service in the catalog and sees exactly what's running - pod count, restart history, resource usage - without `oc` access, without opening a ticket, without messaging you. You didn't have to do anything for this to work. The platform team configured it once, and every service with the right labels gets this for free.
+**ここが重要です。** 開発者はカタログ内の自分のサービスをクリックするだけで、Pod の数、再起動の履歴、リソースの使用状況など、実際に動いているものを正確に把握できます。`oc` アクセス権も、チケットの発行も、あなたへのメッセージも不要です。この仕組みを機能させるために、あなたが個別に対応する必要はありませんでした。プラットフォームチームが一度構成を行えば、適切なラベルが付いたすべてのサービスがこのメリットを無償で享受できます。
 
-Go back to the **Catalog** tab and click on **weather-app**, then select the **Kubernetes** tab - you'll see all 5 weather microservice pods.
+**Catalog** タブに戻り、**weather-app** をクリックして **Kubernetes** タブを選択します。5 つのお天気マイクロサービスの Pod すべてが表示されます。
 
-=== Step 5: See What Errors Look Like
+=== ステップ 5: エラーがどのように表示されるかの確認
 
-Now click on **inventory-system** in the catalog and check its **Kubernetes** tab.
+次に、カタログ内の **inventory-system** をクリックし、その **Kubernetes** タブを確認します。
 
 image::rhdh-inventory-crashloop-errors.png[inventory-system showing error reporting with crashlooping pod, link=self, window=blank]
-You'll see an **Error Reporting** section at the top - the `inventory-db-migrator` pod is in CrashLoopBackOff. The error messages are right there: restart count, failure reason.
+上部に **Error Reporting** セクションが表示されます。`inventory-db-migrator` Pod が CrashLoopBackOff 状態になっています。再起動回数や失敗理由などのエラーメッセージがそこに直接表示されます。
 
-This is what a developer sees when something is broken - and what they'd show you in a ticket. Instead of _"my app is broken, can you look?"_ they can tell you _"inventory-db-migrator is crashlooping with a database connection error."_ That's a much better starting point for troubleshooting.
+これが、何か問題が発生したときに開発者に見える画面であり、チケットであなたに提示される内容となります。_「アプリが壊れたので見てもらえますか？」_ の代わりに、開発者は _「inventory-db-migrator がデータベース接続エラーでクラッシュループしています」_ と伝えることができます。これにより、トラブルシューティングのスタート地点が格段に良くなります。
 
-Go back to the **Catalog** tab and click on **order-tracker**. Notice the Kubernetes tab shows nothing - this service is registered in the catalog but hasn't been deployed yet.
+**Catalog** タブに戻り、**order-tracker** をクリックします。Kubernetes タブには何も表示されないことに注意してください。このサービスはカタログに登録されていますが、まだデプロイされていません。
 
 image::rhdh-order-tracker-empty.png[order-tracker Kubernetes tab showing no resources, link=self, window=blank]
-You'll fix that later in this module.
+これについては、このモジュールの後ほどで修正します。
 
-== Understand How It Works
+== 仕組みの理解 (Understand How It Works)
 
-You've seen what RHDH looks like. Now figure out how it's wired together - when something breaks, these are the pieces you'll need to check.
+RHDH がどのように見えるかを確認しました。次に、どのような仕組みで接続されているのかを把握しましょう。何か障害が発生した際、確認が必要となるコンポーネント群です。
 
-=== Step 6: Check RHDH in the OpenShift Console
+=== ステップ 6: OpenShift コンソールでの RHDH の確認
 
-Switch to the **OCP Console** tab. Make sure the **Administrator** perspective is selected, then go to **Workloads** -> **Pods** and select the **backstage** project from the dropdown.
+**OCP Console** タブに切り替えます。**Administrator** パースペクティブが選択されていることを確認し、**Workloads** -> **Pods** に移動し、ドロップダウンから **backstage** プロジェクトを選択します。
 
-You'll see two pods:
+2つの Pod が表示されます：
 
-* `backstage-developer-hub` - the main application
-* `backstage-psql-developer-hub` - PostgreSQL database storing catalog data and template history
+* `backstage-developer-hub` - メインアプリケーション
+* `backstage-psql-developer-hub` - カタログデータとテンプレート履歴を保持する PostgreSQL データベース
 
-Click on the `backstage-developer-hub` pod (it will have a random suffix like `backstage-developer-hub-fcdd8d5df-2qf4b`) and look at the **Details** tab. Scroll down to the **Volumes** section - you'll see the ConfigMaps mounted into the pod: `app-config-rhdh` (application config), `pre-built-catalog` (catalog entries and template), and `backstage-appconfig-developer-hub` (default config).
+`backstage-developer-hub` Pod をクリックし (`backstage-developer-hub-fcdd8d5df-2qf4b` のようなランダムなサフィックスが付いています)、**Details** タブを確認します。下部の **Volumes** セクションまでスクロールすると、Pod にマウントされている ConfigMap 群が表示されます：`app-config-rhdh` (アプリケーション構成)、`pre-built-catalog` (カタログエントリとテンプレート)、および `backstage-appconfig-developer-hub` (デフォルト構成)。
 
 image::rhdh-pod-volumes.png[Pod volumes showing ConfigMaps mounted into the RHDH pod, link=self, window=blank]
-=== Step 7: Trace the Configuration
+=== ステップ 7: 構成の追跡
 
-Back in the terminal, let's trace how RHDH is configured. Start with the Backstage Custom Resource - this is the single source of truth for the deployment:
+ターミナルに戻り、RHDH がどのように構成されているかを追跡してみましょう。デプロイメントの「信頼できる唯一の情報源」である Backstage カスタムリソースから確認します：
 
 [source,bash,role="execute"]
 ----
 oc get backstage developer-hub -n backstage -o yaml | grep -A5 "dynamicPlugins\|extraEnvs\|extraFiles\|appConfig"
 ----
 
-This shows you four key configuration points:
+ここから 4 つの主要な構成ポイントが確認できます：
 
-* `appConfig` → the ConfigMap `app-config-rhdh` containing the RHDH application config (auth, cluster connection, catalog locations)
-* `dynamicPluginsConfigMapName` → the ConfigMap `dynamic-plugins-rhdh` that controls which plugins are enabled
-* `extraEnvs` → the Secret `rhdh-kubernetes-plugin-token` injected as an environment variable (the service account token RHDH uses to talk to the cluster)
-* `extraFiles` → the ConfigMap `pre-built-catalog` mounted as a file (the catalog entries and software template)
+* `appConfig` → RHDH アプリケーション構成 (認証、クラスター接続、カタログの場所) を含む ConfigMap `app-config-rhdh`
+* `dynamicPluginsConfigMapName` → 有効化されるプラグインを制御する ConfigMap `dynamic-plugins-rhdh`
+* `extraEnvs` → 環境変数として注入される Secret `rhdh-kubernetes-plugin-token` (RHDH がクラスターと通信するために使用するサービスアカウントトークン)
+* `extraFiles` → ファイルとしてマウントされる ConfigMap `pre-built-catalog` (カタログエントリとソフトウェアテンプレート)
 
-**What plugins are enabled?** Check the dynamic plugins ConfigMap:
+**どのプラグインが有効になっていますか？** 動的プラグイン ConfigMap を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get configmap dynamic-plugins-rhdh -n backstage -o jsonpath='{.data.dynamic-plugins\.yaml}' | grep -A1 "package:"
 ----
 
-You should see the Kubernetes backend and frontend plugins (show pod data), Topology plugin (visual map), and scaffolder modules (power the software templates). The quickstart plugin is disabled - that's the setup wizard we don't need.
+Kubernetes バックエンドおよびフロントエンドプラグイン (Pod データの表示)、Topology プラグイン (ビジュアルマップ)、および scaffolder モジュール (ソフトウェアテンプレートを動かすもの) が表示されるはずです。クイックスタートプラグインは無効化されています - これは不要なセットアップウィザードです。
 
-**How does RHDH authenticate to the cluster?** Check the app-config:
+**RHDH はどのようにクラスターに対して認証を行っていますか？** app-config を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get configmap app-config-rhdh -n backstage -o jsonpath='{.data.app-config-rhdh\.yaml}' | grep -A2 "authProvider\|serviceAccountToken"
 ----
 
-It uses `authProvider: serviceAccount` with a token stored in `${K8S_PLUGIN_SA_TOKEN}` (from the Secret we saw above). Check what permissions that service account has:
+`${K8S_PLUGIN_SA_TOKEN}` (上で確認した Secret 由来) に保持されたトークンとともに `authProvider: serviceAccount` を使用しています。そのサービスアカウントが保持する権限を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get clusterrolebindings -o custom-columns='BINDING:.metadata.name,ROLE:.roleRef.name' | grep rhdh-
 ----
 
-The two that matter are `rhdh-cluster-reader` (can view pods across the cluster) and `rhdh-scaffolder-binding` (can create namespaces for templates). Ignore the `rhdh-operator` lines - those are the operator's own permissions. This is least-privilege: RHDH can read cluster state and create namespaces, but nothing more.
+重要となる 2 つは `rhdh-cluster-reader` (クラスター全体の Pod を参照可能) と `rhdh-scaffolder-binding` (テンプレート用のネームスペースを作成可能) です。`rhdh-operator` の行は無視してください - これらはオペレーター自身の権限です。これは最小権限の原則に沿っています。RHDH はクラスター状態の読み取りとネームスペースの作成が可能ですが、それ以上の権限は持ちません。
 
-=== Step 8: Understand the Label Contract
+=== ステップ 8: ラベルコントラクトの理解
 
-The Kubernetes plugin discovers pods by matching labels. This is the contract between the catalog and the cluster:
+Kubernetes プラグインは、ラベルを照合することによって Pod を検出します。これがカタログとクラスター間の契約 (コントラクト) となります：
 
-1. The catalog entry has an annotation: `backstage.io/kubernetes-id: weather-app`
-2. The deployments have a matching label: `backstage.io/kubernetes-id: weather-app`
-3. The plugin finds all pods with that label and displays them
+1. カタログエントリがアノテーションを保持：`backstage.io/kubernetes-id: weather-app`
+2. デプロイメント群が一致するラベルを保持：`backstage.io/kubernetes-id: weather-app`
+3. プラグインがそのラベルを持つすべての Pod を検索して表示
 
-Verify this on the weather app:
+お天気アプリでこれを確認してみます：
 
 [source,bash,role="execute"]
 ----
 oc get deployments -n ops-track-demo -o custom-columns='NAME:.metadata.name,BACKSTAGE-ID:.spec.template.metadata.labels.backstage\.io/kubernetes-id'
 ----
 
-The weather microservice deployments should show `weather-app` as their backstage ID. You may see `weather-db` with `<none>` - that's the debugging exercise pod from Module 05, which isn't part of the catalog. Any deployment with a wrong or missing label won't appear in the Kubernetes tab. You'll see exactly this during the troubleshooting section.
+お天気マイクロサービスのデプロイメント群は、backstage ID として `weather-app` を表示するはずです。`<none>` と表示された `weather-db` が見えるかもしれませんが、これはモジュール 05 のデバッグ演習用 Pod であり、カタログの一部ではありません。ラベルが間違っているか存在しないデプロイメントは、Kubernetes タブに表示されません。トラブルシューティングセクションでまさにこの現象を確認します。
 
-== Watch Self-Service in Action
+== セルフサービスの動作の観察 (Watch Self-Service in Action)
 
-One of the biggest values of RHDH for an ops team is that it handles requests you used to get as tickets. Let's see a software template in action.
+運用チームにとっての RHDH の最大の価値の 1 つは、以前ならチケットとして届いていた要求を自動で処理できる点です。実際のソフトウェアテンプレートの動きを見てみましょう。
 
-=== Step 9: Use the Software Template
+=== ステップ 9: ソフトウェアテンプレートの使用
 
-In the **Developer Hub** tab, click **Home** and then scroll down on the Home page to **Explore Templates**. You'll see the **Deploy a New Service** template - this was built by the platform team to let developers provision their own namespaces following approved patterns.
+**Developer Hub** タブで **Home** をクリックし、ホームページを下にスクロールして **Explore Templates** まで移動します。**Deploy a New Service** テンプレートが表示されます - これは開発者が承認済みのパターンに従って独自のネームスペースをプロビジョニングできるように、プラットフォームチームによって構築されたものです。
 
 image::rhdh-explore-templates.png[Explore Templates section on the home page, link=self, window=blank]
-Click **Deploy a New Service**, then click **Launch Template** to open the form.
+**Deploy a New Service** をクリックし、**Launch Template** をクリックしてフォームを開きます。
 
 image::rhdh-template-launch.png[Template overview page with Launch Template button, link=self, window=blank]
-Fill in:
+以下を入力します：
 
 * **Service Name:** `order-tracker`
 * **Team Name:** `inventory-team`
@@ -209,24 +209,24 @@ Fill in:
 * **Lifecycle:** `production`
 
 image::rhdh-template-form.png[Template form filled in with order-tracker details, link=self, window=blank]
-Click **Review**, then **Create**.
+**Review** をクリックし、次に **Create** をクリックします。
 
 image::rhdh-template-review.png[Template review page before creation, link=self, window=blank]
-Watch the template execute. You'll see four steps complete:
+テンプレートの実行を観察します。4 つのステップが完了するのが確認できます：
 
-1. **Create OpenShift Namespace** - provisions the namespace with team labels
-2. **Deploy API Service** - creates the API deployment with RHDH discovery labels
-3. **Deploy Worker Service** - creates the worker deployment with RHDH discovery labels
-4. **Log Result** - confirms what was created
+1. **Create OpenShift Namespace** - チームラベルを付けてネームスペースをプロビジョニング
+2. **Deploy API Service** - RHDH 検出用ラベルを付けて API デプロイメントを作成
+3. **Deploy Worker Service** - RHDH 検出用ラベルを付けて Worker デプロイメントを作成
+4. **Log Result** - 作成された内容の確認ログを出力
 
 image::rhdh-template-completed.png[Template completed successfully, link=self, window=blank]
-**This is the golden path.** A developer filled in a form. The template created a namespace, deployed two services, and labeled everything for Developer Hub discovery - all following patterns your platform team defined. No tickets, no manual namespace creation, no "can you label this for me", no drift from standards.
+**これがゴールデンパス (Golden Path) です。** 開発者はフォームに入力しただけです。テンプレートがネームスペースを作成し、2つのサービスをデプロイし、Developer Hub 検出用のラベルをすべて付与しました - これらはすべてプラットフォームチームが定義したパターンに従っています。チケットも、手動のネームスペース作成も、「ラベルを付けてもらえますか」という問い合わせも、標準からの逸脱もありません。
 
-NOTE: In production, templates typically commit to a Git repository and sync via ArgoCD rather than deploying directly to the cluster. This gives you an audit trail and drift detection. For this workshop, we deploy directly to keep the focus on what RHDH does rather than the full GitOps pipeline.
+NOTE: 本番環境では、テンプレートはクラスターに直接デプロイするのではなく、Git リポジトリにコミットして ArgoCD 経由で同期するのが一般的です。これにより、監査ログと乖離検出が可能になります。このワークショップでは、完全な GitOps パイプラインではなく RHDH の機能に焦点を当てるため、直接デプロイしています。
 
-=== Step 10: See the Result Immediately
+=== ステップ 10: 結果の即時確認
 
-Back in the terminal, verify what the template created:
+ターミナルに戻り、テンプレートが作成した内容を確認します：
 
 [source,bash,role="execute"]
 ----
@@ -238,22 +238,22 @@ oc get namespace order-tracker --show-labels
 oc get deployments -n order-tracker -o custom-columns='NAME:.metadata.name,BACKSTAGE-ID:.spec.template.metadata.labels.backstage\.io/kubernetes-id'
 ----
 
-The template created the namespace, deployed both services, and set the backstage labels - all in one click.
+テンプレートは、ネームスペースを作成し、両方のサービスをデプロイし、backstage ラベルを設定しました - これらがワンクリックで完了しました。
 
-Now go to **Developer Hub** > **Catalog** > **order-tracker** > **Kubernetes** tab. You should see 2 pods running immediately - no manual labeling needed.
+ここで **Developer Hub** > **Catalog** > **order-tracker** > **Kubernetes** タブに移動します。手動でのラベル付けを行うことなく、2つの Pod が即座に実行中となっているのが確認できるはずです。
 
 image::rhdh-order-tracker-2pods.png[order-tracker showing 2 live pods deployed by the template, link=self, window=blank]
-This is what replaced three separate requests to your team: _"can you create a namespace for me?"_, _"can you deploy my app?"_, _"can you wire it up to Developer Hub?"_. One template, one click, done.
+これが、以前ならあなたのチームに届いていた 3 つの個別リクエスト ( _「ネームスペースを作成してくれますか？」_、_「アプリをデプロイしてくれますか？」_、_「Developer Hub に連携してくれますか？」_ ) に代わるものです。1つのテンプレート、ワンクリックで完了します。
 
-== Troubleshoot: Tickets from Dev Teams
+== トラブルシューティング: 開発チームからのチケット (Troubleshoot: Tickets from Dev Teams)
 
-You have two tickets in your queue from developer teams. Let's work through them.
+開発チームから 2 件のチケットがキューに入っています。それらを解決していきましょう。
 
-=== Ticket 1: "Our gateway disappeared from Developer Hub"
+=== チケット 1: 「Gateway が Developer Hub から消えました」
 
-The payments team reports that their gateway service vanished from the Developer Hub Kubernetes tab, but the pod is still running.
+決済チームから、ゲートウェイサービスが Developer Hub の Kubernetes タブから消えてしまったが、Pod 自体はまだ動作しているという報告がありました。
 
-Simulate the problem:
+問題をシミュレートします：
 
 [source,bash,role="execute"]
 ----
@@ -261,19 +261,19 @@ oc patch deployment payments-gateway -n payments-team --type=json \
   -p '[{"op":"replace","path":"/spec/template/metadata/labels/backstage.io~1kubernetes-id","value":"payments-gateway"}]'
 ----
 
-Go to **Developer Hub** > **Catalog** > **payments-platform** > **Kubernetes** tab. You should see only **2 pods** instead of 3.
+**Developer Hub** > **Catalog** > **payments-platform** > **Kubernetes** タブに移動します。3 つではなく **2 つの Pod** しか表示されないはずです。
 
 image::rhdh-payments-broken-2pods.png[payments-platform showing only 2 pods, link=self, window=blank]
-The deployment is running, but it's invisible. Diagnose it:
+デプロイメントは実行中ですが、画面上からは見えなくなっています。原因を診断します：
 
 [source,bash,role="execute"]
 ----
 oc get deployments -n payments-team -o custom-columns='NAME:.metadata.name,BACKSTAGE-ID:.spec.template.metadata.labels.backstage\.io/kubernetes-id'
 ----
 
-You should see `payments-gateway` has the value `payments-gateway` instead of `payments-platform`. The label doesn't match the catalog annotation - so the plugin can't find it.
+`payments-gateway` の値が `payments-platform` ではなく `payments-gateway` になっているのがわかります。ラベルがカタログのアノテーションと一致していないため、プラグインが検出できていません。
 
-Fix it:
+修正します：
 
 [source,bash,role="execute"]
 ----
@@ -281,158 +281,158 @@ oc patch deployment payments-gateway -n payments-team --type=json \
   -p '[{"op":"replace","path":"/spec/template/metadata/labels/backstage.io~1kubernetes-id","value":"payments-platform"}]'
 ----
 
-Go to **Developer Hub** > **Catalog** > **payments-platform** > **Kubernetes** tab - all 3 pods should be back.
+**Developer Hub** > **Catalog** > **payments-platform** > **Kubernetes** タブに戻ります - 3 つの Pod すべてが再び表示されるようになります。
 
 image::rhdh-payments-fixed-3pods.png[payments-platform restored to 3 pods after fix, link=self, window=blank]
-TIP: If you still see "pods with errors" due to previous restart counts, restart the deployments to clear them:
+TIP: 過去の再起動回数によって「エラーのある Pod (pods with errors)」がまだ表示される場合は、デプロイメントを再起動してクリアします：
 
 [source,bash,role="execute"]
 ----
 oc rollout restart deployment/payments-api deployment/payments-processor deployment/payments-gateway -n payments-team
 ----
 
-=== Ticket 2: "inventory-system shows errors in Developer Hub"
+=== チケット 2: 「inventory-system が Developer Hub でエラーを表示しています」
 
-The inventory team reports their service is showing errors in Developer Hub. They want to know what's wrong.
+在庫チームから、彼らのサービスが Developer Hub でエラーを表示しているため何が起きているか知りたいという報告がありました。
 
-You already saw this in Step 5 - the `inventory-db-migrator` pod is crashlooping. Now diagnose it from the CLI like you would in production:
+ステップ 5 で確認した通り、`inventory-db-migrator` Pod がクラッシュループを起こしています。本番環境と同じように CLI から診断してみましょう：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n inventory-team
 ----
 
-You'll see `inventory-db-migrator` in CrashLoopBackOff. Check the logs:
+`inventory-db-migrator` が CrashLoopBackOff になっているのが見えます。ログを確認します：
 
 [source,bash,role="execute"]
 ----
 oc logs deployment/inventory-db-migrator -n inventory-team
 ----
 
-The log shows: `FATAL: Cannot connect to database at postgres.inventory-team:5432 - connection refused`. The pod is trying to reach a database that doesn't exist.
+ログには次のように表示されています： `FATAL: Cannot connect to database at postgres.inventory-team:5432 - connection refused`。Pod は存在しないデータベースにアクセスしようとしています。
 
-This is a development issue, not an ops issue - the inventory team deployed a database migration job before setting up their database. You'd respond to the ticket: _"Your inventory-db-migrator is crashlooping because it can't connect to postgres.inventory-team:5432. The database service doesn't exist in that namespace. Check with your dev team that the database is deployed before running migrations."_
+これはインフラの問題ではなく開発上の問題です - 在庫チームがデータベースのセットアップを行う前にデータベースマイグレーションジョブをデプロイしてしまいました。チケットには次のように回答します： _「inventory-db-migrator は postgres.inventory-team:5432 に接続できないためクラッシュループしています。そのネームスペースにデータベースサービスが存在しません。マイグレーションを実行する前にデータベースがデプロイされているか開発チームに確認してください。」_
 
-Delete the broken deployment to clear the error:
+障害が発生しているデプロイメントを削除してエラーを解消します：
 
 [source,bash,role="execute"]
 ----
 oc delete deployment inventory-db-migrator -n inventory-team
 ----
 
-Go to **Developer Hub** > **Catalog** > **inventory-system** > **Kubernetes** tab - the crashlooping `inventory-db-migrator` pod should be gone, and you should see 3 running pods.
+**Developer Hub** > **Catalog** > **inventory-system** > **Kubernetes** タブに移動します - クラッシュループしていた `inventory-db-migrator` Pod が消え、実行中の 3 つの Pod が表示されるはずです。
 
-TIP: If you still see "pods with errors" in the Error Reporting section, this is because Developer Hub flags any pod with a restart count of 1 or more. These restarts are from the initial cluster provisioning, not from the exercise. To clear them, restart the deployments to create fresh pods:
+TIP: Error Reporting セクションに「エラーのある Pod」がまだ表示される場合は、Developer Hub が再起動回数 1 以上の Pod をフラグ立てしているためです。これらの再起動は初期クラスタープロビジョニングによるものであり、演習によるものではありません。これらをクリアするには、デプロイメントを再起動して新しい Pod を作成します：
 
 [source,bash,role="execute"]
 ----
 oc rollout restart deployment/inventory-api deployment/inventory-db-sync deployment/inventory-worker -n inventory-team
 ----
 
-=== What You Practiced
+=== 実践した内容の振り返り
 
-Two different failure modes, two different diagnosis paths:
+2 つの異なる障害モードと、2 つの異なる診断パスを経験しました：
 
 [cols="1,1,1"]
 |===
-|Ticket |Symptom in RHDH |Root Cause
+|チケット |RHDH での症状 |根本原因
 
-|Gateway disappeared
-|2 pods instead of 3, no errors
-|Label value mismatch - label exists but doesn't match the catalog annotation
+|Gateway が消えた
+|エラーはないが 3 つではなく 2 つの Pod のみ表示
+|ラベル値の不一致 - ラベルは存在するがカタログのアノテーションと一致しない
 
-|Errors in Developer Hub
-|Error Reporting section, pod with errors
-|CrashLoopBackOff - application bug, not an infrastructure issue
+|Developer Hub でのエラー表示
+|Error Reporting セクションにエラーのある Pod が表示される
+|CrashLoopBackOff - インフラの問題ではなくアプリケーションのバグ
 |===
 
-The first is an ops fix (correct the label). The second is a dev team issue (tell them what's wrong and let them fix their code). Knowing the difference saves you from chasing problems that aren't yours.
+1つ目は運用側での修正 (ラベルの修正) です。2つ目は開発チーム側の問題 (問題点を伝え、彼ら自身にコードを修正させる) です。この違いを理解しておくことで、本来対応する必要のない問題に時間を取られるのを防ぐことができます。
 
-== Monitor Developer Hub
+== Developer Hub のモニタリング (Monitor Developer Hub)
 
-RHDH exposes Prometheus metrics by default - catalog entity counts, API request latency, memory usage, and background task health. As the admin responsible for keeping the portal running, you should be scraping these.
+RHDH はデフォルトで Prometheus メトリクス (カタログエンティティ数、API リクエストのレイテンシ、メモリ使用量、バックグラウンドタスクの健全性) を公開します。ポータルの安定稼働を担当する管理者として、これらを収集する必要があります。
 
-=== Enable Monitoring
+=== モニタリングの有効化
 
-The RHDH operator has a built-in monitoring toggle that creates a `ServiceMonitor` for Prometheus:
+RHDH オペレーターには、Prometheus 用の `ServiceMonitor` を作成する組み込みのモニタリング切り替えスイッチが存在します：
 
 [source,bash,role="execute"]
 ----
 oc patch backstage developer-hub -n backstage --type=merge -p '{"spec":{"monitoring":{"enabled":true}}}'
 ----
 
-This doesn't restart the pod - it just tells the operator to create a ServiceMonitor so Prometheus starts scraping the metrics endpoint that RHDH already exposes.
+これにより Pod が再起動するわけではありません。単に ServiceMonitor を作成するようオペレーターに指示し、Prometheus が RHDH の公開済みメトリクスエンドポイントの収集を開始できるようにします。
 
-NOTE: This requires user workload monitoring to be enabled on the cluster (`enableUserWorkload: true` in `cluster-monitoring-config`). It's pre-configured on your workshop cluster. On your own cluster, see link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/monitoring/enabling-monitoring-for-user-defined-projects[Enabling monitoring for user-defined projects, window=blank].
+NOTE: これにはクラスターでユーザーワークロードモニタリングが有効になっている必要があります (`cluster-monitoring-config` 内の `enableUserWorkload: true`)。このワークショップクラスターでは構成済みです。ご自身のクラスターで設定する場合は、link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/monitoring/enabling-monitoring-for-user-defined-projects[ユーザー定義プロジェクトのモニタリングの有効化, window=blank] を参照してください。
 
-Verify the ServiceMonitor was created:
+ServiceMonitor が作成されたことを確認します：
 
 [source,bash,role="execute"]
 ----
 oc get servicemonitor -n backstage
 ----
 
-=== Query RHDH Metrics
+=== RHDH メトリクスのクエリ
 
-NOTE: It takes 1-2 minutes for Prometheus to discover the new ServiceMonitor and start scraping. If you see "No datapoints found", wait a minute and click **Run Queries** again.
+NOTE: Prometheus が新しい ServiceMonitor を検出してスクレイピングを開始するまでに 1〜2 分かかります。「No datapoints found」と表示された場合は、1分待ってから再度 **Run Queries** をクリックしてください。
 
-Navigate to the **OCP Console** > **Observe** > **Metrics**. Enter this query and click **Run Queries**:
+**OCP Console** > **Observe** > **Metrics** に移動します。以下のクエリを入力して **Run Queries** をクリックします：
 
 [source,promql,role="copypaste"]
 ----
 catalog_entities_count{namespace="backstage"}
 ----
 
-You should see the catalog entity counts broken down by kind - the same components, templates, and groups you explored in the catalog earlier, now visible as metrics.
+種別ごとに分類されたカタログエンティティ数が表示されます - 先ほどカタログで探索したのと同じコンポーネント、テンプレート、グループが、メトリクスとして可視化されていることが確認できます。
 
 image::rhdh-metrics-catalog-entities.png[Prometheus metrics showing catalog entity counts by kind, link=self, window=blank]
-Try another query to see API traffic:
+別のクエリを試して API トラフィックを確認します：
 
 [source,promql,role="copypaste"]
 ----
 sum(rate(http_server_duration_count{namespace="backstage"}[5m]))
 ----
 
-This shows the request rate to RHDH - if this drops to zero, the portal is down. If it spikes, something is hammering the API.
+これにより RHDH へのリクエストレートが表示されます - これがゼロに落ち込んだ場合はポータルが停止しています。急増した場合は、何かが API に過度な負荷をかけている可能性があります。
 
 image::rhdh-metrics-request-rate.png[Prometheus metrics showing RHDH request rate, link=self, window=blank]
-TIP: These are the same metrics Prometheus collects for any workload with a ServiceMonitor. RHDH is just another workload being monitored by the built-in Prometheus stack.
+TIP: これらは Prometheus が ServiceMonitor を持つ任意のワークロードに対して収集するメトリクスと同じです。RHDH も組み込み Prometheus スタックによって監視されるワークロードの1つに過ぎません。
 
-== What You Learned
+== 学んだこと (What You Learned)
 
 [cols="1,2"]
 |===
-|What You Did |Why It Matters
+|行った作業 |その重要性
 
-|**Browsed and filtered the catalog**
-|The catalog is your service inventory - find owners, filter by tag, answer audit questions in seconds
+|**カタログの参照とフィルタリング**
+|カタログはサービスインベントリです - 所有者の特定、タグによる絞り込み、監査からの質問への即座の回答を可能にします
 
-|**Saw live Kubernetes data and errors**
-|Developers see pod status and error details without `oc` access - healthy and unhealthy states
+|**ライブ Kubernetes データとエラーの確認**
+|開発者は `oc` アクセス権なしで、正常・異常両方の Pod ステータスとエラー詳細を確認できます
 
-|**Used a golden path template**
-|One click deployed a namespace + two services + RHDH labels. This replaced three tickets to your team
+|**ゴールデンパステンプレートの使用**
+|ワンクリックでネームスペース + 2つのサービス + RHDH ラベルをデプロイしました。これにより運用チームへの 3 件のチケットが削減されます
 
-|**Diagnosed two different failures**
-|Label mismatch = ops fix. Crashlooping pod = dev team issue. Knowing the difference saves you time
+|**2 つの異なる障害の診断**
+|ラベルの不一致 = 運用側の修正。Pod のクラッシュループ = 開発チームの問題。その違いを知ることで時間を節約できます
 
-|**Enabled RHDH monitoring**
-|One toggle exposes catalog and API metrics to Prometheus - same observability stack, one more workload
+|**RHDH モニタリングの有効化**
+|1つの切り替えでカタログと API メトリクスを Prometheus に公開できます - 同じ可視性スタックにワークロードを1つ追加するだけです
 |===
 
-== Going Further
+== さらなるステップ (Going Further)
 
-This module showed you RHDH from an ops perspective - understanding the tool your developers use every day. A full platform engineering implementation adds:
+このモジュールでは、開発者が毎日使用するツールを理解するという運用の観点から RHDH を紹介しました。完全なプラットフォームエンジニアリングの実装では以下が追加されます：
 
-* **SSO Integration** - connect to your identity provider so developers log in with their existing credentials
-* **RBAC Plugin** - control who can register components, create from templates, or view specific services
-* **CI/CD Plugins** - Tekton pipeline runs and ArgoCD sync status visible directly in the catalog
-* **TechDocs** - documentation lives alongside the code and renders in the portal
-* **More Software Templates** - golden paths for deploying applications, creating pipelines, and provisioning infrastructure
+* **SSO 統合** - アイデンティティプロバイダーに接続し、開発者が既存の認証情報でログインできるようにする
+* **RBAC プラグイン** - コンポーネントの登録、テンプレートからの作成、特定サービスの参照権限を制御する
+* **CI/CD プラグイン** - Tekton パイプラインの実行状態や ArgoCD 同期ステータスをカタログ内で直接表示する
+* **TechDocs** - ドキュメントをコードと一緒に保持し、ポータル内でレンダリング表示する
+* **より多くのソフトウェアテンプレート** - アプリケーションのデプロイ、パイプラインの作成、インフラプロビジョニングのためのゴールデンパスの作成
 
-TIP: Interested in building templates, configuring plugins, or platform engineering with Developer Hub? Check out **OpenShift Days: Dev Track** or ask your proctor about setting one up.
+TIP: テンプレートの構築、プラグインの構成、または Developer Hub を使用したプラットフォームエンジニアリングに関心がありますか？ **OpenShift Days: Dev Track** をチェックするか、担当者にセットアップについて問い合わせてみてください。
 
-== Cleanup
+== クリーンアップ (Cleanup)
 
 [source,bash,role="execute"]
 ----
