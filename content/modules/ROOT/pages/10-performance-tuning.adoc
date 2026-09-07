@@ -1,9 +1,9 @@
-= パフォーマンストゥーニング（Performance Tuning）
+= パフォーマンストゥーニング
 :page-toclevels: 1
 
-== はじめに（Getting Started）
+== はじめに
 
-=== モジュールの概要（Module Overview）
+=== モジュールの概要
 
 **所要時間:** 15〜20 分 +
 **対象者:** プラットフォームエンジニア、SRE、運用チーム
@@ -14,18 +14,18 @@ include::partial$console-access.adoc[]
 
 **このモジュールでの取り組み:** OpenShift のオートスケーリングおよびモニタリングツールを使用して、実際のパフォーマンス問題を診断して修正します。
 
-=== 学習目標（Learning Objectives）
+=== 学習目標
 
 * リソース関連の Pod 障害を診断して修正する
 * Vertical Pod Autoscaler (VPA) を使用してアプリケーションリソースを適正規模（ライトサイジング）化する
 * 変動する負荷に対応するために Horizontal Pod Autoscaler (HPA) を設定する
 * 組み込みツールを使用してパフォーマンスを監視する
 
-== パート 1: 過剰にプロビジョニングされたアプリケーション（Part 1: The Over-Provisioned Application）
+== パート 1: 過剰にプロビジョニングされたアプリケーション
 
 開発者が「念のため」2Gi のメモリを要求するアプリケーションをデプロイしました。しかし、それは本当に必要なのでしょうか？
 
-=== アプリのデプロイ（Deploy the App）
+=== アプリのデプロイ
 
 [source,bash,role="execute"]
 ----
@@ -46,7 +46,7 @@ oc get pods -w
 
 Pod が `Running` と表示されたら `Ctrl+C` を押します。
 
-=== 要求されたリソースの確認（Check What Resources Were Requested）
+=== 要求されたリソースの確認
 
 [source,bash,role="execute"]
 ----
@@ -55,7 +55,7 @@ oc get deployment memory-hog -o jsonpath='{.spec.template.spec.containers[0].res
 
 このアプリは **2Gi のメモリ**と **500m の CPU** を要求しました。1 つの Pod に対してリザーブされているクラスター容量としてはかなりの大きさです。
 
-=== 実際の使用量の確認（Check What It Actually Uses）
+=== 実際の使用量の確認
 
 TIP: 前のモジュールで別のユーザーとしてログインしていた場合は、管理者としてログインし直してください。コンソール: ユーザー名 `{openshift_cluster_admin_username}` / パスワード `{openshift_cluster_admin_password}`。認証エラーが表示された場合は、コンソールタブを再読み込みして再試行してください。
 
@@ -71,11 +71,11 @@ oc adm top pod -l app=memory-hog
 
 アプリが実際に使用しているメモリは、リザーブした 2Gi よりもはるかに少なく、正確な数値は変動しますが、通常は 200Mi を大きく下回ります。これは、他の Pod が使用できない **1.8Gi 以上の無駄な容量**が存在することを意味します！
 
-== パート 2: VPA によるライトサイジング（Part 2: Right-Size with VPA）
+== パート 2: VPA によるライトサイジング
 
 Vertical Pod Autoscaler (VPA) は実際の使用量を分析し、適切なリソース値を推奨（レコメンド）します。
 
-=== VPA のインストール（必要な場合）（Install VPA (if needed)）
+=== VPA のインストール（必要な場合）
 
 VPA がインストールされているか確認します：
 
@@ -109,7 +109,7 @@ done
 echo "VPA operator ready"
 ----
 
-=== VPA レコメンデーションの取得（Get VPA Recommendations）
+=== VPA レコメンデーションの取得
 
 memory-hog Deployment をターゲットとする VPA リソースを作成します。ここでは `updateMode: "Off"` を使用しています。これは VPA が値を**推奨するのみ**で、Pod を自動的に変更しないことを意味します。本番環境では、まず `Off` から始めて推測値・推奨値を検証し、その後 `Auto` に切り替えて再起動時に VPA が Pod のサイズを自動変更するようにするのが一般的です。
 
@@ -159,7 +159,7 @@ oc get vpa memory-hog-vpa -o jsonpath='{.status.recommendation.containerRecommen
 
 VPA は、要求された 2Gi ではなく **~256Mi のメモリ**を推奨しています。これは憶測ではなく、実際に観察された使用量に基づいています。
 
-=== 適正規模化したリソースの適用（Apply the Right-Sized Resources）
+=== 適正規模化したリソースの適用
 
 [source,bash,role="execute"]
 ----
@@ -171,7 +171,7 @@ oc patch deployment memory-hog --type=json -p='[
 ]'
 ----
 
-=== 削減効果の検証（Verify the Savings）
+=== 削減効果の検証
 
 [source,bash,role="execute"]
 ----
@@ -180,12 +180,12 @@ oc get deployment memory-hog -o jsonpath='{.spec.template.spec.containers[0].res
 
 **結果:** 他のワークロードが使用できるように、**1.75Gi のメモリ**と **450m の CPU** を解放することができました。これを何百もの Pod に掛け合わせると、クラスターコストを大幅に削減できる可能性があります。
 
-== パート 3: HPA による可変負荷への対応（Part 3: Handle Variable Load with HPA）
+== パート 3: HPA による可変負荷への対応
 
 image::diagrams/10_hpa.png[Horizontal Pod Autoscaler Flow, align=center, link=self, window=blank]
 次に、トラフィックに基づいて水平スケーリングする必要があるアプリケーションをデプロイします。
 
-=== スケーラブルなアプリケーションのデプロイ（Deploy a Scalable Application）
+=== スケーラブルなアプリケーションのデプロイ
 
 [source,bash,role="execute"]
 ----
@@ -199,7 +199,7 @@ oc apply -f https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/
 oc rollout status deployment/demo-app --timeout=120s
 ----
 
-=== HPA の作成（Create an HPA）
+=== HPA の作成
 
 CPU が 50% を超えたときに自動スケーリングするように設定します。なぜ 50% なのでしょうか？ターゲットを低くすると、Pod がより早くスケーリングします（応答性は高くなりますが、コストが高くなります）。ターゲットを高くすると、Pod がより密に配置されます（リソースを節約できますが、反応が遅くなります）。 50% は一般的な出発点です。アプリのレイテンシ要件に基づいてチューニングしてください。
 
@@ -226,7 +226,7 @@ demo-app   Deployment/demo-app   cpu: <unknown>/50%   1         5         1     
 
 TIP: コンソールの **Workloads > HorizontalPodAutoscalers**（プロジェクト: `performance-demo`）で HPA を確認できます。現在の CPU パーセンテージとターゲットの比較、および現在のレプリカ数をリアルタイムで表示します。
 
-=== 負荷の生成（Generate Load）
+=== 負荷の生成
 
 2 番目のターミナルを開くか、以下をバックグラウンドで実行します：
 
@@ -235,7 +235,7 @@ TIP: コンソールの **Workloads > HorizontalPodAutoscalers**（プロジェ�
 oc run load-generator --image=registry.access.redhat.com/ubi9/ubi-minimal --restart=Never -- /bin/sh -c "while true; do curl -s -o /dev/null http://demo-app:8080; done"
 ----
 
-=== オートスケーリングの監視（Watch the Autoscaling）
+=== オートスケーリングの監視
 
 負荷ジェネレーターが稼働している間、コンソールで **Workloads -> Pods**（プロジェクト: `performance-demo`）に移動し、HPA がスケールアップするにつれて新しい Pod が表示されるのを確認します。これが動作中のオートスケーラーです。
 
@@ -258,7 +258,7 @@ Pod がスケールしたことを確認します：
 oc get pods -l app=demo-app
 ----
 
-=== 負荷の停止（Stop the Load）
+=== 負荷の停止
 
 [source,bash,role="execute"]
 ----
@@ -267,7 +267,7 @@ oc delete pod load-generator
 
 負荷が減少してから約 5 分後に、HPA はスケールダウンします。これはスケールダウンのデフォルトの `stabilizationWindowSeconds` であり、フラッピング（頻繁なスケールイン・アウトの繰り返し）を防止します。待つ必要はありません。本番環境ではスケールダウンが意図的に緩やかに行われることを理解しておいてください。
 
-== パート 4: キャパシティの意思決定（Part 4: Make a Capacity Decision）
+== パート 4: キャパシティの意思決定
 
 VPA を使用して 1 つのアプリをライトサイジングし、HPA を使用して別のアプリを自動スケーリングしました。次に全体像を見てみましょう：
 
@@ -285,14 +285,14 @@ image::hpa-scaling-dashboard.png[Dashboard showing CPU usage and pod count durin
 
 キャパシティレビューで「新しいノードが必要なのか、それともアプリが単に過剰プロビジョニングされているだけなのか？」という質問に答えるには、このように確認を行います。多くのクラスターでは、VPA を導入するだけで、新しいインフラストラクチャを購入しなくても済むほどの十分な容量を確保できます。
 
-== クリーンアップとまとめ（Cleanup & Takeaways）
+== クリーンアップとまとめ
 
 [source,bash,role="execute"]
 ----
 oc delete project performance-demo
 ----
 
-=== 主要なまとめ（Key Takeaways）
+=== 主要なまとめ
 
 [cols="1,2"]
 |===
