@@ -1,46 +1,46 @@
-= Observability & Logging
+= 可視性とログ記録（Observability & Logging）
 :page-toclevels: 1
 
-**Duration:** 35-40 minutes +
-**Format:** Hands-on observability configuration
+**所要時間:** 35〜40 分 +
+**形式:** ハンズオンでの可視性構成
 
 include::partial$console-access.adoc[]
 
-== The Scenario
+== シナリオ（The Scenario）
 
-Something's wrong with your cluster. How do you know? Where do you look? If you can't answer that in 30 seconds, your observability stack isn't ready for production.
+お使いのクラスターで何らかの異常が発生しています。どうやってそれを確認しますか？どこを見ればよいでしょうか？もしそれを30秒以内に答えることができない場合、可視性（Observability）スタックはまだ本番環境の準備ができていません。
 
-In this module you'll explore the metrics and alerting that's already running (Prometheus, Alertmanager), set up a logging pipeline (Loki, Vector) so you can actually search logs, and deploy distributed tracing (OpenTelemetry, Tempo) to follow requests across services.
+このモジュールでは、すでに稼働しているメトリクスとアラート（Prometheus、Alertmanager）を調査し、ログを実際に検索できるようにログパイプライン（Loki、Vector）をセットアップし、サービス間のリクエストを追跡するための分散トレーシング（OpenTelemetry、Tempo）をデプロイします。
 
 image::diagrams/09_observability.png[OpenShift Monitoring Architecture, align=center, link=self, window=blank]
-TIP: If you were logged in as a different user in a previous module, log back in as admin. Console: Username `{openshift_cluster_admin_username}` / Password `{openshift_cluster_admin_password}`. Terminal: `oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_password}`
+TIP: 前のモジュールで別のユーザーとしてログインしていた場合は、管理者としてログインし直してください。コンソール: ユーザー名 `{openshift_cluster_admin_username}` / パスワード `{openshift_cluster_admin_password}`。ターミナル: `oc login -u {openshift_cluster_admin_username} -p {openshift_cluster_admin_password}`
 
-== Built-in Metrics with Prometheus
+== Prometheus による組み込みメトリクス（Built-in Metrics with Prometheus）
 
-OpenShift ships with a fully managed Prometheus stack - no installation required. It collects metrics from every component in the cluster.
+OpenShift には、完全に管理された Prometheus スタックが標準で備わっており、インストールは不要です。これはクラスター内のあらゆるコンポーネントからメトリクスを収集します。
 
-=== Explore Cluster Metrics
+=== クラスターメトリクスの探索（Explore Cluster Metrics）
 
-View the Prometheus pods that are already running:
+すでに稼働している Prometheus Pod を確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n openshift-monitoring -l app.kubernetes.io/name=prometheus
 ----
 
-Query cluster CPU usage using the console metrics viewer:
+コンソールのメトリクスビューアを使用して、クラスターの CPU 使用率をクエリします：
 
-1. Switch to the **OCP Console** tab
-2. Navigate to **Observe -> Metrics**
-3. Enter the query: `cluster:cpu_usage_cores:sum`
-4. Click **Run Queries**
+1. **OCP Console** タブに切り替えます
+2. **Observe -> Metrics** に移動します
+3. クエリを入力します: `cluster:cpu_usage_cores:sum`
+4. **Run Queries** をクリックします
 
-You'll see a time-series graph showing cluster CPU usage over time - far more useful than a point-in-time number.
+時間の経過に伴うクラスターの CPU 使用率を示す時系列グラフが表示されます。これは、ある一時点の数値を見るよりもはるかに有用です。
 
 image::observe-metrics-query.png[Observe Metrics page showing cluster CPU usage query result, link=self, window=blank]
-TIP: Try other queries like `node_memory_MemAvailable_bytes` or `kubelet_running_pods` to explore what metrics are available.
+TIP: `node_memory_MemAvailable_bytes` や `kubelet_running_pods` などの他のクエリを試して、どのようなメトリクスが利用可能か探索してみてください。
 
-For quick CLI snapshots, you can also use:
+CLI で迅速に確認したい場合は、以下も使用できます：
 
 [source,bash,role="execute"]
 ----
@@ -52,32 +52,32 @@ oc adm top nodes
 oc adm top pods -A --sort-by=cpu | head -15
 ----
 
-=== Dashboards in the Console
+=== コンソールのダッシュボード（Dashboards in the Console）
 
-Navigate to **Observe -> Dashboards** in the OpenShift console. Key dashboards include:
+OpenShift コンソールで **Observe -> Dashboards** に移動します。主なダッシュボードには以下が含まれます：
 
 image::observe-dashboards-list.png[Observe Dashboards showing Kubernetes Compute Resources Cluster dashboard, link=self, window=blank]
-* **etcd** - Control plane database health
-* **Kubernetes / Compute Resources / Cluster** - Cluster-wide CPU and memory
-* **Kubernetes / Compute Resources / Namespace (Pods)** - Per-namespace breakdown
-* **Node Exporter / USE Method / Cluster** - Utilization, Saturation, Errors
+* **etcd** - コントロールプレーンデータベースの健全性
+* **Kubernetes / Compute Resources / Cluster** - クラスター全体の CPU とメモリ
+* **Kubernetes / Compute Resources / Namespace (Pods)** - ネームスペースごとの内訳
+* **Node Exporter / USE Method / Cluster** - 使用率 (Utilization)、飽和度 (Saturation)、エラー (Errors)
 
-=== User Workload Monitoring
+=== ユーザーワークロードモニタリング（User Workload Monitoring）
 
-OpenShift can also scrape metrics from your own applications. User workload monitoring is not enabled by default - it has been pre-enabled on this workshop cluster. Verify it's running:
+OpenShift は、独自作成のアプリケーションからメトリクスを収集することもできます。ユーザーワークロードモニタリングはデフォルトでは有効になっていませんが、このワークショップクラスターでは事前に有効化されています。稼働中であることを確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n openshift-user-workload-monitoring
 ----
 
-If pods are running, any application that exposes a `/metrics` endpoint can be scraped by creating a `ServiceMonitor` or `PodMonitor` resource.
+Pod が実行中であれば、`/metrics` エンドポイントを公開しているすべてのアプリケーションは、`ServiceMonitor` または `PodMonitor` リソースを作成することでメトリクスを収集できるようになります。
 
-NOTE: This is already enabled on your workshop cluster - you don't need to run this. On your own cluster, you would enable it with:
+NOTE: これはワークショップクラスターですでに有効化されているため、実行する必要はありません。ご自身のクラスターで有効化する場合は、以下を適用します：
 
 [source,bash,role="copypaste"]
 ----
-# Do not run - already configured on this cluster
+# 実行不要 - このクラスターでは構成済みです
 oc apply -f - <<EOF
 apiVersion: v1
 kind: ConfigMap
@@ -90,26 +90,26 @@ data:
 EOF
 ----
 
-Any application that exposes a Prometheus `/metrics` endpoint can be scraped by creating a `ServiceMonitor` pointing at it. This is how the Horizontal Pod Autoscaler (HPA) gets custom metrics for scaling decisions.
+Prometheus の `/metrics` エンドポイントを公開しているアプリケーションは、それを指定する `ServiceMonitor` を作成することで収集対象になります。これにより、Horizontal Pod Autoscaler (HPA) がスケーリングの判断に使用するカスタムメトリクスを取得できるようになります。
 
-== Alerting with Alertmanager
+== Alertmanager によるアラート通知（Alerting with Alertmanager）
 
-OpenShift includes Alertmanager for routing alerts to notification channels (email, Slack, PagerDuty, webhooks).
+OpenShift には、通知チャネル（メール、Slack、PagerDuty、Webフック）にアラートをルーティングするための Alertmanager が含まれています。
 
-=== View Current Alerts
+=== 現在のアラートの確認（View Current Alerts）
 
-Check what alerting rules exist:
+どのようなアラートルールが存在するか確認します：
 
 [source,bash,role="execute"]
 ----
 oc get prometheusrules -A | head -15
 ----
 
-You can also view alerts in the console under **Observe -> Alerting**.
+コンソールの **Observe -> Alerting** からもアラートを確認できます。
 
-=== Create a Custom Alert
+=== カスタムアラートの作成（Create a Custom Alert）
 
-You can define your own alerts for application namespaces. Here's an example that fires when a pod has been restarting. We'll create it in the `openshift-monitoring` namespace where the built-in alerting rules live:
+アプリケーションネームスペース用のアラートを独自に定義できます。以下は、Pod が再起動を繰り返している場合に発火する例です。組み込みのアラートルールが存在する `openshift-monitoring` ネームスペースにこれを作成します：
 
 [source,bash,role="execute"]
 ----
@@ -134,14 +134,14 @@ spec:
 EOF
 ----
 
-Verify the rule was created:
+ルールが作成されたことを確認します：
 
 [source,bash,role="execute"]
 ----
 oc get alertingrule ops-track-alerts -n openshift-monitoring
 ----
 
-The rule exists but nothing is triggering it. Let's fix that - deploy a pod that crash-loops so you can see the alert go from inactive to pending to firing:
+ルールは存在しますが、まだトリガーされていません。これを発生させてみましょう。クラッシュループする Pod をデプロイし、アラートが Inactive から Pending、Firing へと遷移する様子を確認します：
 
 [source,bash,role="execute"]
 ----
@@ -162,86 +162,86 @@ EOF
 echo "Crash-looping pod deployed - it will restart every few seconds"
 ----
 
-While the restarts accumulate, navigate to **Observe -> Alerting -> Alerting Rules** in the console and search for `HighPodRestartRate`. It may take a minute or two for Prometheus to pick up the new rule. If you don't see it, refresh the page and click **Clear all filters** or remove any existing filter chips (click the **x** on them) before searching.
+再起動が蓄積される間に、コンソールの **Observe -> Alerting -> Alerting Rules** に移動し、`HighPodRestartRate` を検索します。Prometheus が新しいルールを検出するまでに 1〜2 分かかる場合があります。表示されない場合は、ページを再読み込みし、検索前に **Clear all filters** をクリックするか既存のフィルターチップを削除（**x** をクリック）してください。
 
 image::alerting-rules-search.png[Alerting Rules showing custom HighPodRestartRate rule, link=self, window=blank]
-Click on the rule to see its details. After about 2-3 minutes (once the pod has restarted a few times and the `for: 1m` duration passes), you'll see the alert transition from **Inactive** → **Pending** → **Firing**:
+ルールをクリックして詳細を確認します。約 2〜3 分後（Pod が数回再起動し、`for: 1m` の期間が経過した後）、アラートのステータスが **Inactive** → **Pending** → **Firing** に変化します：
 
 image::alerting-rule-detail.png[HighPodRestartRate rule detail showing expression and active alerts, link=self, window=blank]
-Now navigate to **Alerting → Alerts** - you should see `HighPodRestartRate`. Click into the alert and click the **Description** at the bottom to see more detail - you'll see `crashloop-test` as the source pod:
+次に **Alerting → Alerts** に移動します。`HighPodRestartRate` が表示されているはずです。アラートをクリックし、下部の **Description** をクリックして詳細を確認すると、ソース Pod として `crashloop-test` が表示されています：
 
 image::alerts-firing.png[Alerts tab showing currently firing alerts with severity and state, link=self, window=blank]
-This is the view on-call engineers live in. You just created a rule, triggered it with a real failure, and watched it fire. Clean up the crash-looping pod:
+これがオンコールエンジニアが常に確認している画面です。ルールを作成し、実際の障害によってトリガーさせ、アラートが発火するのを確認することができました。クラッシュループしている Pod を削除してクリーンアップします：
 
 [source,bash,role="execute"]
 ----
 oc delete pod crashloop-test -n alert-demo --ignore-not-found
 ----
 
-=== Send Alerts to Email
+=== メールへのアラート送信（Send Alerts to Email）
 
-Your alert fired - but who got notified? Right now, nobody. Alertmanager has receivers configured (Default, Watchdog, Critical) but none of them actually send notifications anywhere. Alerts fire, appear in the console, and that's it.
+アラートが発火しましたが、誰に通知が届いたでしょうか？現時点では誰にも届いていません。Alertmanager にはレシーバーが構成されていますが（Default、Watchdog、Critical）、どれも実際に通知を送信するように構成されていません。アラートは発火し、コンソールに表示されますが、それだけです。
 
-In production, that means an overnight incident goes unnoticed until someone checks the console in the morning. Let's fix that by wiring up email notifications.
+本番環境では、これは夜間のインシデントに誰も気づかず、翌朝誰かがコンソールを確認するまで放置されることを意味します。メール通知を設定してこれを修正しましょう。
 
-**Deploy a Mail Server**
+**メールサーバーのデプロイ**
 
-Deploy Mailpit - a lightweight mail server that catches emails and shows them in a web inbox. This simulates what an internal mail relay does in production:
+Mailpit をデプロイします。これはメールをキャッチして Web インボックスに表示する軽量なメールサーバーです。本番環境で内部メールリレーが処理する動作をシミュレートします：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/deploy-mailpit.sh)
 ----
 
-**Configure Alertmanager**
+**Alertmanager の設定**
 
-Now configure Alertmanager to send emails through Mailpit. This routes warning alerts to `ops-team@example.com` and critical alerts to `oncall@example.com`:
+Mailpit 経由でメールを送信するように Alertmanager を設定します。これにより、Warning アラートは `ops-team@example.com` に、Critical アラートは `oncall@example.com` にルーティングされます：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/configure-alertmanager-email.sh)
 ----
 
-The script will print the Mailpit inbox URL. Click it or copy it into your browser. Within a minute you should see alert emails arriving:
+スクリプトによって Mailpit インボックスの URL が出力されます。クリックするかブラウザにコピーしてください。1 分以内にアラートメールが届くのが確認できます：
 
 image::alerting-mailpit-inbox.png[Mailpit inbox showing alert notification emails from Alertmanager, link=self, window=blank]
-Notice the routing:
+ルーティングに注目してください：
 
-* **Warning** alerts (like `PodDisruptionBudgetAtLimit`, `KubeCPUOvercommit`) go to `ops-team@example.com`
-* **Critical** alerts go to `oncall@example.com`
+* **Warning** アラート（`PodDisruptionBudgetAtLimit` や `KubeCPUOvercommit` など）は `ops-team@example.com` に届きます
+* **Critical** アラートは `oncall@example.com` に届きます
 
-Click on any email to see the full alert details - alert name, namespace, severity, description, and a link to the Alertmanager UI.
+任意のメールをクリックして、アラート名、ネームスペース、重要度、説明、Alertmanager UI へのリンクなど、完全なアラート詳細を確認してください。
 
-In production, you would replace `mailpit.alert-demo.svc:1025` with your organization's SMTP relay and use real email addresses. Alertmanager also supports Slack, PagerDuty, and webhooks using the same routing structure - see link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/monitoring/managing-alerts#sending-notifications-to-external-systems_managing-alerts[Sending notifications to external systems, window=blank].
+本番環境では、`mailpit.alert-demo.svc:1025` を組織の SMTP リレーに置き換え、実際のメールアドレスを使用します。Alertmanager は、同じルーティング構造を使用して Slack、PagerDuty、および Web フックもサポートしています。詳細は link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/monitoring/managing-alerts#sending-notifications-to-external-systems_managing-alerts[外部システムへの通知の送信, window=blank] を参照してください。
 
-**Restore Alertmanager**
+**Alertmanager の復元**
 
-Reset Alertmanager to its default configuration and clean up:
+Alertmanager をデフォルト設定に戻し、クリーンアップします：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/restore-alertmanager.sh)
 ----
 
-**Takeaway:** An alert that nobody receives is the same as no alert at all. Configuring receivers is one of the first things to do on a new cluster - without it, your monitoring is just decoration.
+**まとめ:** 誰も受信しないアラートは、アラートが存在しないのと同じです。レシーバーの設定は、新しいクラスターで最初に行うべきことの 1 つです。これがなければ、モニタリングはただの飾りにすぎません。
 
-== Set Up the Logging Stack
+== ログスタックのセットアップ（Set Up the Logging Stack）
 
-While metrics tell you *what* is happening, logs tell you *why*. OpenShift's logging stack has three layers - you need to understand each one because when logging breaks in production, you need to know which layer to troubleshoot.
+メトリクスが「*何が*起きているか」を伝えるのに対し、ログは「*なぜ*起きているか」を伝えます。OpenShift のログスタックには 3 つの層があります。本番環境でログ収集が停止した際にどの層をトラブルシューティングすべきか把握するために、各層を理解しておく必要があります。
 
-=== The Architecture
+=== アーキテクチャ（The Architecture）
 
-The logging pipeline works like this:
+ログパイプラインの仕組みは以下のとおりです：
 
-1. **Collectors** (Vector) run on every node and gather logs from containers, the OS, and the Kubernetes API
-2. **Loki** stores and indexes the logs (backed by S3-compatible object storage)
-3. **Console UI plugin** lets you query logs from the OpenShift web console
+1. **コレクター (Vector)** が各ノード上で実行され、コンテナ、OS、および Kubernetes API からログを収集します
+2. **Loki** がログを保存およびインデックス化します（S3 互換オブジェクトストレージによってバックアップされます）
+3. **コンソール UI プラグイン** により、OpenShift Web コンソールからログをクエリできるようになります
 
-Each layer is managed by a separate operator, so you can upgrade or troubleshoot them independently.
+各層は個別のオペレーターによって管理されるため、それぞれ独立してアップグレードやトラブルシューティングを行うことができます。
 
-=== Install the Logging Operators
+=== ログオペレーターのインストール（Install the Logging Operators）
 
-Three operators are needed. Each one manages a different part of the pipeline. First, create the required namespaces and operator groups:
+3 つのオペレーターが必要です。それぞれがパイプラインの異なる部分を管理します。まず、必要なネームスペースと OperatorGroup を作成します：
 
 [source,bash,role="execute"]
 ----
@@ -266,33 +266,33 @@ spec:
 EOF
 ----
 
-Install the Loki Operator from the Software Catalog - this is the same process for any operator in OperatorHub.
+ソフトウェアカタログから Loki Operator をインストールします。これは OperatorHub の他のオペレーターと同じ手順です。
 
-**Loki Operator (log storage)**
+**Loki Operator (ログストレージ)**
 
-1. Navigate to **Ecosystem -> Software Catalog**
-2. Search for **Loki Operator**
-3. Click the **Loki Operator** tile (select the one labeled **Red Hat**, not snapshot-lightspeed)
+1. **Ecosystem -> Software Catalog** に移動します
+2. **Loki Operator** を検索します
+3. **Loki Operator** タイルをクリックします（snapshot-lightspeed ではなく、**Red Hat** と記載されているものを選択します）
 +
 image::obs-loki-operator-details.png[Loki Operator details with Install button highlighted, link=self, window=blank]
 +
-4. Click **Install**
-5. On the install configuration page, leave all defaults (channel, namespace, approval) and click **Install**
+4. **Install** をクリックします
+5. インストール設定ページで、すべてのデフォルト値（チャネル、ネームスペース、承認）のまま **Install** をクリックします
 +
 image::obs-loki-install-config.png[Loki Operator install configuration page, link=self, window=blank]
-You'll see the "Installing Operator" confirmation:
+「Installing Operator」の確認画面が表示されます：
 
 image::obs-loki-installing.png[Loki Operator installing confirmation, link=self, window=blank]
-**Remaining Operators**
+**残りのオペレーター**
 
-You've seen how OperatorHub works. The remaining operators use the same process - let's script them. This will take a couple of minutes to complete:
+OperatorHub の動作を確認しました。残りのオペレーターも同じプロセスを使用するため、スクリプトで自動実行します。完了までに数分かかります：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/install-operators.sh)
 ----
 
-Verify all operators are installed:
+すべてのオペレーターがインストールされたことを確認します：
 
 [source,bash,role="execute"]
 ----
@@ -300,11 +300,11 @@ oc get csv -n openshift-logging --no-headers | grep -i logging && \
 oc get csv -n openshift-operators --no-headers | grep -iE 'tempo|opentelemetry|observability'
 ----
 
-=== Configure Log Storage (Loki + S3)
+=== ログストレージの設定 (Loki + S3)（Configure Log Storage (Loki + S3)）
 
-Loki needs object storage for log data. This cluster has OpenShift Data Foundation (ODF) which provides S3-compatible storage via NooBaa. In production, you'd point this at AWS S3, Azure Blob, or any S3-compatible store.
+Loki はログデータ用にオブジェクトストレージを必要とします。このクラスターには OpenShift Data Foundation (ODF) が備わっており、NooBaa を介して S3 互換ストレージを提供します。本番環境では、これを AWS S3、Azure Blob、または任意の S3 互換ストアに指定します。
 
-Create an S3 bucket for log storage:
+ログストレージ用の S3 バケットを作成します：
 
 [source,bash,role="execute"]
 ----
@@ -316,29 +316,29 @@ metadata:
   namespace: openshift-logging
 spec:
   generateBucketName: loki-bucket
-  storageClassName: openshift-storage.noobaa.io  # ODF's S3 provider
+  storageClassName: openshift-storage.noobaa.io  # ODFのS3プロバイダー
 EOF
 ----
 
-Wait for the bucket to be provisioned:
+バケットがプロビジョニングされるまで待ちます：
 
 [source,bash,role="execute"]
 ----
 oc wait --for=jsonpath='{.status.phase}'=Bound obc/loki-bucket -n openshift-logging --timeout=60s
 ----
 
-Now extract the S3 credentials, create the CA cert ConfigMap, and deploy the LokiStack - all in one block so the variables stay in scope:
+変数がスコープ内に維持されるよう、S3 認証情報の抽出、CA 証明書 ConfigMap の作成、および LokiStack のデプロイを 1 つのブロックでまとめて実行します：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/setup-loki-storage.sh)
 ----
 
-=== Set Up Log Collection
+=== ログ収集のセットアップ（Set Up Log Collection）
 
-The ClusterLogForwarder tells Vector (the collector) what to collect and where to send it. The collector runs as a DaemonSet - one pod per node - so it captures logs from every container on every node.
+ClusterLogForwarder は、何を収集し、どこへ送信するかを Vector (コレクター) に指示します。コレクターは DaemonSet として実行され（各ノードに 1 つの Pod）、すべてのノード上のすべてのコンテナからログを収集します。
 
-Create the collector service account with the required permissions:
+必要な権限を持つコレクターサービスアカウントを作成します：
 
 [source,bash,role="execute"]
 ----
@@ -349,7 +349,7 @@ oc adm policy add-cluster-role-to-user collect-audit-logs -z collector -n opensh
 oc adm policy add-cluster-role-to-user collect-infrastructure-logs -z collector -n openshift-logging
 ----
 
-Wait for the LokiStack gateway CA bundle to be created (the ClusterLogForwarder needs it):
+LokiStack ゲートウェイ CA バンドルが作成されるまで待ちます（ClusterLogForwarder に必要です）：
 
 [source,bash,role="execute"]
 ----
@@ -362,16 +362,16 @@ done
 echo "CA bundle ready"
 ----
 
-Create the ClusterLogForwarder - this defines the pipeline:
+ClusterLogForwarder を作成します。これがパイプラインを定義します：
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/setup-log-forwarding.sh)
 ----
 
-=== Enable the Logging UI
+=== ログ UI の有効化（Enable the Logging UI）
 
-The UIPlugin adds the **Observe -> Logs** view to the OpenShift console. Run the command below to enable it - it may take a few minutes to appear:
+UIPlugin は、OpenShift コンソールに **Observe -> Logs** ビューを追加します。以下のコマンドを実行して有効化します。表示されるまでに数分かかる場合があります：
 
 [source,bash,role="execute"]
 ----
@@ -388,9 +388,9 @@ spec:
 EOF
 ----
 
-=== Verify and View Logs
+=== ログの検証と表示（Verify and View Logs）
 
-Wait for the collector pods to start before verifying the full stack:
+スタック全体を検証する前に、コレクター Pod が起動するまで待ちます：
 
 [source,bash,role="execute"]
 ----
@@ -403,53 +403,53 @@ done
 oc get pods -n openshift-logging
 ----
 
-You should see the logging operator, collector pods (one per node), and multiple Loki component pods all `Running`.
+ロギングオペレーター、コレクター Pod（ノードごとに 1 つ）、および複数の Loki コンポーネント Pod がすべて `Running` になっている必要があります。
 
-After the UIPlugin is created, you may see a notification in the console:
+UIPlugin が作成されると、コンソールに通知が表示される場合があります：
 
 image::Loki_refresh.png[Web console update notification, link=self, window=blank]
-Click **Refresh** to reload the console with the new Logs view. This may log you out of the console - if so, log back in with:
+**Refresh** をクリックしてコンソールを再読み込みし、新しい Logs ビューを表示します。これによりコンソールからログアウトされる場合があります。その場合は以下でログインし直してください：
 
-* Username: `{openshift_cluster_admin_username}`
-* Password: `{openshift_cluster_admin_password}`
+* ユーザー名: `{openshift_cluster_admin_username}`
+* パスワード: `{openshift_cluster_admin_password}`
 
-Navigate to **Observe -> Logs** in the console. Use the log type dropdown (highlighted in red below) to switch between three log types:
+コンソールで **Observe -> Logs** に移動します。ログタイプのドロップダウン（下記で赤くハイライトされている部分）を使用して、3 つのログタイプを切り替えます：
 
 image::observe-logs-view.png[Observe Logs view with log type dropdown highlighted, link=self, window=blank]
-* **Application** - Logs from user workloads
-* **Infrastructure** - Logs from OpenShift components
-* **Audit** - Kubernetes API audit logs
+* **Application** - ユーザーワークロードからのログ
+* **Infrastructure** - OpenShift コンポーネントからのログ
+* **Audit** - Kubernetes API 監査ログ
 
 image::appinfraaudit.png[Log type selector, link=self, window=blank]
-Use the filters to search by namespace, pod name, or severity level:
+フィルターを使用して、ネームスペース、Pod 名、または重要度レベルで検索します：
 
 image::filterlogs.png[Log filters, link=self, window=blank]
-Filter by severity (Critical, Error, Warning, Info, Debug):
+重要度 (Critical、Error、Warning、Info、Debug) でフィルター処理します：
 
 image::severity.png[Severity filter, link=self, window=blank]
-Try it now: select **Infrastructure** logs, then filter by severity **Warning** or **Error**. These are the log entries that matter during an incident - pod evictions, OOM kills, certificate expiry warnings.
+実際に試してみましょう：**Infrastructure** ログを選択し、重要度 **Warning** または **Error** でフィルターを設定します。これらは、インシデント発生時に重要となるログエントリー（Pod の Eviction、OOM Kill、証明書の期限切れ警告など）です。
 
-Click **Show Histogram** (highlighted in red below) in the top right to display log volume over time. Spikes in the error count correlate with incidents - click and drag to select a time window to zoom in.
+右上の **Show Histogram**（下記で赤くハイライトされている部分）をクリックして、時間の経過に伴うログボリュームを表示します。エラー数の急増はインシデントと相関します。クリックしてドラッグすることで時間ウィンドウを選択し、ズームインできます。
 
 image::histogram.png[Log histogram, link=self, window=blank]
 [NOTE]
 ====
-It may take 1-2 minutes for logs to start appearing after the collector pods are running. If you see "No datapoints found", wait a moment and refresh.
+コレクター Pod が稼働し始めてからログが表示され始めるまでに 1〜2 分かかる場合があります。「No datapoints found」と表示された場合は、少し待ってから再読み込みしてください。
 ====
 
-== OpenTelemetry for Distributed Tracing
+== 分散トレーシングのための OpenTelemetry（OpenTelemetry for Distributed Tracing）
 
-Metrics tell you *what* is happening. Logs tell you *why*. **Traces** tell you *where* - when a request crosses multiple microservices, traces show the exact path and timing across every service. If a user reports "checkout is slow", a trace shows you: frontend (2ms) → API gateway (5ms) → inventory service (800ms) → payment (3ms) - so you instantly see inventory is the bottleneck.
+メトリクスは「*何が*起きているか」を伝えます。ログは「*なぜ*起きているか」を伝えます。**トレース**は「*どこで*起きているか」を伝えます。リクエストが複数のマイクロサービスにまたがる場合、トレースはすべてのサービスにわたる正確な経路とタイミングを表示します。ユーザーから「チェックアウト処理が遅い」と報告された場合、トレースは「フロントエンド (2ms) → API ゲートウェイ (5ms) → 在庫サービス (800ms) → 決済 (3ms)」のように表示するため、在庫サービスがボトルネックであることを即座に把握できます。
 
-Developers instrument their apps with OpenTelemetry SDKs, but ops teams own the tracing infrastructure - deploying the collector, managing the storage backend, and making traces visible in the console.
+開発者は OpenTelemetry SDK を使用してアプリを計測しますが、運用チームはトレーシングインフラストラクチャを所有します。つまり、コレクターをデプロイし、ストレージバックエンドを管理し、コンソールでトレースを可視化します。
 
-The Tempo and OpenTelemetry operators were already installed in the scripted block earlier. Let's deploy the tracing backend.
+Tempo および OpenTelemetry オペレーターは、先ほどのスクリプトブロックですでにインストールされています。トレーシングバックエンドをデプロイしましょう。
 
-=== Deploy Tempo (Trace Storage)
+=== Tempo のデプロイ (トレースストレージ)（Deploy Tempo (Trace Storage)）
 
-Tempo is the backend that stores and indexes traces - similar to how Loki stores logs. We'll use TempoMonolithic, a single-binary deployment suitable for workshops and small clusters.
+Tempo は、Loki がログを保存するのと同様に、トレースを保存およびインデックス化するバックエンドです。ここでは、ワークショップや小規模クラスターに適した単一バイナリ展開である TempoMonolithic を使用します。
 
-Create the namespace and deploy TempoMonolithic with multi-tenancy enabled:
+ネームスペースを作成し、マルチテナンシーを有効にして TempoMonolithic をデプロイします：
 
 [source,bash,role="execute"]
 ----
@@ -478,9 +478,9 @@ spec:
 EOF
 ----
 
-NOTE: Multi-tenancy is required for the console Traces UI to detect the Tempo instance. The `openshift` mode uses OpenShift's built-in authentication - no external OIDC setup needed.
+NOTE: コンソールの Traces UI が Tempo インスタンスを検出するには、マルチテナンシーが必要です。`openshift` モードは OpenShift の組み込み認証を使用するため、外部の OIDC 設定は不要です。
 
-Wait for Tempo to be ready:
+Tempo の準備ができるまで待ちます：
 
 [source,bash,role="execute"]
 ----
@@ -493,42 +493,42 @@ done
 oc get pods -n tracing-system -l app.kubernetes.io/component=tempo
 ----
 
-=== Set Up RBAC
+=== RBAC のセットアップ（Set Up RBAC）
 
-The tracing pipeline needs two sets of permissions: the collector needs write access to push traces, and users need read access to query them.
+トレーシングパイプラインには 2 つの権限セットが必要です。コレクターにはトレースをプッシュするための書き込みアクセス権が必要であり、ユーザーにはトレースをクエリするための読み取りアクセス権が必要です。
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/setup-tracing-rbac.sh)
 ----
 
-=== Deploy the OpenTelemetry Collector
+=== OpenTelemetry コレクターのデプロイ（Deploy the OpenTelemetry Collector）
 
-The collector is the central receiving station for trace data. Apps send traces to the collector, and the collector forwards them to Tempo for storage. Think of it like Vector for logs - a pipeline component that sits between producers and storage.
+コレクターは、トレースデータを受信する中央ステーションです。アプリはトレースをコレクターに送信し、コレクターは保存のためにトレースを Tempo に転送します。ログにおける Vector のようなもので、プロデューサーとストレージの間に位置するパイプラインコンポーネントと考えられます。
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/09-observability/setup-otel-collector.sh)
 ----
 
-This collector:
+このコレクターの機能：
 
-* **Receives** traces via OTLP on ports 4317 (gRPC) and 4318 (HTTP)
-* **Batches** incoming spans for efficiency
-* **Exports** to the Tempo gateway, authenticating with the service account token
+* ポート 4317 (gRPC) および 4318 (HTTP) で OTLP 経由のトレースを**受信**
+* 効率化のため着信スパンを**バッチ処理**
+* サービスアカウントトークンで認証し、Tempo ゲートウェイへ**エクスポート**
 
-Verify the collector is running:
+コレクターが実行中であることを確認します：
 
 [source,bash,role="execute"]
 ----
 oc get pods -n tracing-system
 ----
 
-You should see both the Tempo pod and the collector pod `Running`.
+Tempo Pod とコレクター Pod の両方が `Running` になっている必要があります。
 
-=== Enable the Traces Console UI
+=== Traces コンソール UI の有効化（Enable the Traces Console UI）
 
-Like the logging UI, the Traces view needs a UIPlugin:
+ログ UI と同様に、Traces ビューには UIPlugin が必要です：
 
 [source,bash,role="execute"]
 ----
@@ -542,11 +542,11 @@ spec:
 EOF
 ----
 
-You may see a console notification to refresh - click **Refresh** to reload.
+再読み込みを促すコンソール通知が表示される場合があります。**Refresh** をクリックして再読み込みします。
 
-=== Send a Test Trace
+=== テストトレースの送信（Send a Test Trace）
 
-The collector is ready but nothing is sending traces yet. Let's send a test trace to verify the full pipeline:
+コレクターの準備はできましたが、まだ何もトレースを送信していません。パイプライン全体を検証するために、テストトレースを送信してみましょう：
 
 [source,bash,role="execute"]
 ----
@@ -577,78 +577,78 @@ curl -s -X POST http://otel-collector.tracing-system.svc:4318/v1/traces \
 '
 ----
 
-This simulates what an instrumented application does - sends a span describing a single operation (`GET /api/weather`) with timing data.
+これは、計測されたアプリケーションの動作（単一の操作 `GET /api/weather` を記述するスパンとタイミングデータの送信）をシミュレートしています。
 
-=== View Traces in the Console
+=== コンソールでのトレースの表示（View Traces in the Console）
 
-Loading the Traces view may log you out of the console. If so, log back in with:
+Traces ビューを読み込むと、コンソールからログアウトされる場合があります。その場合は以下でログインし直してください：
 
-* Username: `{openshift_cluster_admin_username}`
-* Password: `{openshift_cluster_admin_password}`
+* ユーザー名: `{openshift_cluster_admin_username}`
+* パスワード: `{openshift_cluster_admin_password}`
 
-Navigate to **Observe -> Traces** in the console. Select the Tempo instance (`tracing-system / sample`) and tenant (`dev`):
+コンソールで **Observe -> Traces** に移動します。Tempo インスタンス (`tracing-system / sample`) とテナント (`dev`) を選択します：
 
 image::otel-traces-view.png[Observe Traces view showing workshop-demo trace with scatter graph, link=self, window=blank]
-You should see the `workshop-demo` trace. Click on it to see the trace detail view - a timing waterfall showing each span:
+`workshop-demo` トレースが表示されるはずです。クリックしてトレースの詳細ビューを表示します。各スパンを示すタイミングウォーターフォールが表示されます：
 
 image::otel-trace-detail.png[Trace detail view showing GET /api/weather span with 500ms duration, link=self, window=blank]
-With a single service this shows one span. In a real microservices application, you'd see multiple spans stacked in a waterfall - frontend → API → database - making it immediately obvious where latency is coming from.
+単一のサービスの場合、これは 1 つのスパンを示します。実際のマイクロサービスアプリケーションでは、ウォーターフォール状にスタックされた複数のスパン（フロントエンド → API → データベース）が表示され、遅延がどこで発生しているかが一目でわかります。
 
-The collector is now ready for production use. Developers point their apps at `otel-collector.tracing-system.svc:4317` using OpenTelemetry SDKs, and traces automatically appear here.
+コレクターは本番環境で使用できる状態になりました。開発者は OpenTelemetry SDK を使用してアプリの送信先を `otel-collector.tracing-system.svc:4317` に指定するだけで、トレースが自動的にここに表示されます。
 
-== Cleanup & Summary
+== クリーンアップとまとめ（Cleanup & Summary）
 
-Remove the observability resources you deployed. The Prometheus monitoring stack is built-in and doesn't need cleanup.
+デプロイした可視性リソースを削除します。Prometheus モニタリングスタックは組み込みのため、クリーンアップは不要です。
 
 [source,bash,role="execute"]
 ----
 bash <(curl -sL https://raw.githubusercontent.com/rhpds/openshift-days-ops-showroom/main/support/cleanup-scripts/cleanup-observability.sh)
 ----
 
-=== Summary
+=== まとめ（Summary）
 
-**What you learned:**
+**学んだこと：**
 
-* OpenShift's built-in Prometheus stack provides metrics and dashboards with no setup
-* How to create custom alerting rules with AlertingRule and configure email notifications
-* How to install and configure the full logging stack (Loki + Vector)
-* How to view and filter logs in the OpenShift console
-* How to deploy the OpenTelemetry tracing pipeline (Tempo + OTel Collector)
-* How to view distributed traces in the console
+* OpenShift の組み込み Prometheus スタックは、セットアップなしでメトリクスとダッシュボードを提供する
+* AlertingRule を使用してカスタムアラートルールを作成し、メール通知を設定する方法
+* 完全なログスタック (Loki + Vector) をインストールして設定する方法
+* OpenShift コンソールでログを表示およびフィルター処理する方法
+* OpenTelemetry トレーシングパイプライン (Tempo + OTel Collector) をデプロイする方法
+* コンソールで分散トレースを表示する方法
 
-Together, metrics, logs, and traces give you the **three pillars of observability** - each answers a different question about your cluster and workloads.
+メトリクス、ログ、トレースを組み合わせることで、**可視性の3つの柱 (Three Pillars of Observability)** が完成します。それぞれがクラスターとワークロードに関する異なる質問に答えてくれます。
 
-**Key operational commands:**
+**主要な運用コマンド:**
 
 [source,bash]
 ----
-# Cluster metrics
+# クラスターメトリクス
 oc adm top nodes
 oc adm top pods -A --sort-by=cpu | head -15
 
-# View alerting rules
+# アラートルールの表示
 oc get prometheusrules -A
 
-# View logging pods
+# ロギング Pod の表示
 oc get pods -n openshift-logging
 
-# Check LokiStack status
+# LokiStack ステータスの確認
 oc get lokistack -n openshift-logging
 
-# Check ClusterLogForwarder status
+# ClusterLogForwarder ステータスの確認
 oc get clusterlogforwarder -n openshift-logging
 
-# View tracing pods
+# トレーシング Pod の表示
 oc get pods -n tracing-system
 
-# Check TempoMonolithic status
+# TempoMonolithic ステータスの確認
 oc get tempomonolithic -n tracing-system
 ----
 
-=== Additional Resources
+=== 追加リソース（Additional Resources）
 
-* **OpenShift Monitoring:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index[Monitoring, window=blank]
-* **OpenShift Logging Documentation:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/logging/index[Logging, window=blank]
-* **Logging 6.2 Stack:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/logging/logging-6-2[Logging 6.2, window=blank]
-* **OpenShift Distributed Tracing:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/distributed_tracing/index[Distributed Tracing, window=blank]
+* **OpenShift モニタリング:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index[Monitoring, window=blank]
+* **OpenShift ロギングドキュメント:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/logging/index[Logging, window=blank]
+* **Logging 6.2 スタック:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/logging/logging-6-2[Logging 6.2, window=blank]
+* **OpenShift 分散トレーシング:** link:https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/distributed_tracing/index[Distributed Tracing, window=blank]
 * **Red Hat build of OpenTelemetry:** link:https://docs.redhat.com/en/documentation/red_hat_build_of_opentelemetry/[OpenTelemetry, window=blank]
