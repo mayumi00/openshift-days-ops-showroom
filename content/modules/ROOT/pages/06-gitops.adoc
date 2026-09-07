@@ -1,9 +1,9 @@
-= GitOps - 宣言的クラスター管理（GitOps - Declarative Cluster Management）
+= GitOps - 宣言的クラスター管理
 :page-toclevels: 1
 
-== はじめに（Getting Started）
+== はじめに
 
-=== モジュールの概要（Module Overview）
+=== モジュールの概要
 
 **所要時間:** 10〜15 分 +
 **形式:** ハンズオン +
@@ -17,7 +17,7 @@ GitOps は、クラスターの構成を Git リポジトリ内のコードと�
 
 このモジュールでは、ArgoCD を使用して本番運用可能なプロジェクト構成を Git からデプロイし、その後意図的に構成を崩して ArgoCD が乖離を検知する様子を確認します。
 
-=== 学習目標（Learning Objectives）
+=== 学習目標
 
 このモジュールを完了すると、以下のことができるようになります：
 
@@ -28,7 +28,7 @@ GitOps は、クラスターの構成を Git リポジトリ内のコードと�
 * 自動修復（Self-healing）を有効にして、ArgoCD が未承認の変更を自動的に元に戻すようにする
 
 image::diagrams/06_gitops.png[ArgoCD GitOps Sync Flow, align=center, link=self, window=blank]
-=== OpenShift 上での GitOps の仕組み（How GitOps Works on OpenShift）
+=== OpenShift 上での GitOps の仕組み
 
 OpenShift GitOps は link:https://argo-cd.readthedocs.io/en/stable/[ArgoCD, window=blank] を使用して、継続的な調整ループ（Reconciliation loop）を実装しています：
 
@@ -41,9 +41,9 @@ OpenShift GitOps は link:https://argo-cd.readthedocs.io/en/stable/[ArgoCD, wind
 
 詳細については、link:https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.19/html/understanding_openshift_gitops/index[Understanding OpenShift GitOps, window=blank] を参照してください。
 
-== ArgoCD によるデプロイ（Deploy with ArgoCD）
+== ArgoCD によるデプロ
 
-=== ステップ 1: ArgoCD へのアクセス（Step 1: Access ArgoCD）
+=== ステップ 1: ArgoCD へのアクセス
 
 OpenShift GitOps は、お使いのクラスターにすでにインストールされています。ArgoCD インスタンスは `openshift-gitops` ネームスペースで稼働しています。
 
@@ -76,7 +76,7 @@ oc get pods -n openshift-gitops
 
 ArgoCD サーバー、アプリケーションコントローラー、リポジトリサーバー、Redis、および Dex の各 Pod がすべて稼働しているはずです。
 
-=== ステップ 2: Git からのプロジェクト構成のデプロイ（Step 2: Deploy a Project Configuration from Git）
+=== ステップ 2: Git からのプロジェクト構成のデプロイ
 
 本番環境において、プラットフォームチームはリソースクォータ、デフォルト制限、およびネットワークポリシーを含む標準的なプロジェクト構成を Git 内で定義します。新しいチームプロジェクトにはすべて同じベースラインが提供されます。実際にこれをデプロイしてみましょう。
 
@@ -210,9 +210,9 @@ oc get networkpolicy -n gitops-managed-project
 
 TIP: OpenShift コンソールで **Home -> Projects** に移動し、`gitops-managed-project` を選択します。**Overview** タブで ResourceQuota を確認できます。
 
-== 構成の乖離検出と自動修復（Drift Detection & Self-Healing）
+== 構成の乖離検出と自動修復
 
-=== ステップ 3: 構成の乖離のシミュレート（Step 3: Simulate Configuration Drift）
+=== ステップ 3: 構成の乖離のシミュレート
 
 次に、誰かが未承認の手動変更を行った場合（本番環境で「急ぎでちょっと修正したい」ときなどに発生しがちな事象）に何が起こるかを確認します。
 
@@ -256,7 +256,7 @@ ArgoCD は変更された特定のフィールドのみをフラグ立てする�
 
 これこそが運用チームにとっての GitOps の強みです。何百ものリソースにわたって、何がベースラインから逸脱したのか、そしてそれがいつ起こったのかを即座に特定できます。
 
-=== ステップ 4: 期待される状態の復元（Step 4: Restore the Desired State）
+=== ステップ 4: 期待される状態の復元
 
 **Git から再同期：**
 
@@ -278,7 +278,7 @@ echo
 
 出力: `20` - Pod クォータが Git で定義された値に戻りました。未承認の変更が取り消されました。
 
-=== ステップ 5: 自動修復の有効化（Step 5: Enable Self-Healing）
+=== ステップ 5: 自動修復の有効化
 
 前のステップでは、手動で再同期を行う必要がありました。本番環境では、人間の介入なしに ArgoCD が自動的に乖離を取り消すように設定することが望ましいです。
 
@@ -321,7 +321,7 @@ image::gitops-selfheal-synced.png[ArgoCD dashboard showing managed-project still
 image::gitops-events-sync-history.png[ArgoCD Events tab showing drift detection and automatic resync, link=self, window=blank]
 これが本番クラスターがコンプライアンスを維持する仕組みです。誰かがどのような手動変更を行ったとしても、ArgoCD は Git 内で定義された構成を継続的に強制適用します。
 
-== GitOps を使用すべきタイミング（When to Use GitOps）
+== GitOps を使用すべきタイミング
 
 GitOps は以下の場合に最も価値を発揮します：
 
@@ -332,9 +332,9 @@ GitOps は以下の場合に最も価値を発揮します：
 
 詳細については、link:https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.19/html/understanding_openshift_gitops/index[Understanding OpenShift GitOps, window=blank] を参照してください。
 
-== クリーンアップとまとめ（Cleanup & Summary）
+== クリーンアップとまとめ
 
-=== まとめ（Summary）
+=== まとめ
 
 **達成したこと：**
 
@@ -346,7 +346,7 @@ GitOps は以下の場合に最も価値を発揮します：
 
 **重要なポイント:** GitOps はクラスター構成をコードに変換します。すべてが Git 上に存在し、追跡可能で、監査可能で、自動的に適用されます。Git 内に存在しないものは、クラスター上にあるべきではありません。
 
-=== クリーンアップ（Cleanup）
+=== クリーンアップ
 
 [source,bash,role="execute"]
 ----
